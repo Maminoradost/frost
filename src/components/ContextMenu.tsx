@@ -1,8 +1,55 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useUi } from '../store/ui';
+import { IS_ANDROID } from '../lib/platform';
+import { useUi, type MenuItem } from '../store/ui';
+
+/** Меню действий: всплывающее у курсора в Windows, выезжающее снизу на телефоне. */
+export function ContextMenu() {
+  return IS_ANDROID ? <SheetMenu /> : <PopupMenu />;
+}
+
+function MenuItems({ items, close }: { items: MenuItem[]; close: () => void }) {
+  return (
+    <>
+      {items.map((item, i) =>
+        'separator' in item ? (
+          <div key={i} className="menu__sep" />
+        ) : (
+          <button
+            key={i}
+            role="menuitem"
+            className={`menu__item ${item.danger ? 'is-danger' : ''}`}
+            disabled={item.disabled}
+            onClick={() => {
+              close();
+              item.onClick?.();
+            }}
+          >
+            <span className="menu__icon">{item.icon}</span>
+            <span>{item.label}</span>
+          </button>
+        ),
+      )}
+    </>
+  );
+}
+
+/** Нижний лист Material 3: затемнение, ручка, крупные пункты. Закрывается касанием мимо и кнопкой «Назад». */
+function SheetMenu() {
+  const menu = useUi((s) => s.menu);
+  const close = useUi((s) => s.closeMenu);
+  if (!menu) return null;
+  return (
+    <div className="sheet-scrim" onClick={close} onContextMenu={(e) => e.preventDefault()}>
+      <div className="sheet menu" role="menu" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet__handle" aria-hidden />
+        <MenuItems items={menu.items} close={close} />
+      </div>
+    </div>
+  );
+}
 
 /** Собственное контекстное меню (стеклянная панель), не выходит за край окна. */
-export function ContextMenu() {
+function PopupMenu() {
   const menu = useUi((s) => s.menu);
   const close = useUi((s) => s.closeMenu);
   const ref = useRef<HTMLDivElement>(null);
@@ -47,25 +94,7 @@ export function ContextMenu() {
       style={{ left: pos?.x ?? menu.x, top: pos?.y ?? menu.y, visibility: pos ? 'visible' : 'hidden' }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {menu.items.map((item, i) =>
-        'separator' in item ? (
-          <div key={i} className="menu__sep" />
-        ) : (
-          <button
-            key={i}
-            role="menuitem"
-            className={`menu__item ${item.danger ? 'is-danger' : ''}`}
-            disabled={item.disabled}
-            onClick={() => {
-              close();
-              item.onClick?.();
-            }}
-          >
-            <span className="menu__icon">{item.icon}</span>
-            <span>{item.label}</span>
-          </button>
-        ),
-      )}
+      <MenuItems items={menu.items} close={close} />
     </div>
   );
 }

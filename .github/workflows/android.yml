@@ -1,0 +1,196 @@
+# Сборка Frost для Android: один универсальный APK для arm64-v8a и armeabi-v7a.
+#
+# Запуск вручную: вкладка Actions → Android → Run workflow. APK появится в артефактах запуска.
+# Из release.yml (тег v*) этот же процесс вызывается автоматически, а подписанный APK
+# прикрепляется к черновику релиза.
+#
+# Подпись: секреты ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS,
+# ANDROID_KEY_PASSWORD (как их сделать: docs/ANDROID.md). Без них APK подписывается
+# временным отладочным ключом, называется *-debugsigned.apk и в релиз не попадает.
+name: Android
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      version:
+        description: Версия Frost из tauri.conf.json
+        value: ${{ jobs.apk.outputs.version }}
+      signed:
+        description: true, если APK подписан ключом из секретов
+        value: ${{ jobs.apk.outputs.signed }}
+      artifact:
+        description: Имя артефакта с APK
+        value: ${{ jobs.apk.outputs.artifact }}
+
+permissions:
+  contents: read
+
+env:
+  # NDK r28+: библиотеки выровнены под страницы 16 КБ (новые устройства Android 15+).
+  NDK_VERSION: 28.2.13676358
+  JAVA_VERSION: '21'
+
+jobs:
+  apk:
+    name: APK для Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      signed: ${{ steps.sign.outputs.signed }}
+      artifact: ${{ steps.meta.outputs.artifact }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Корень репозитория или единственная вложенная папка с package.json (как в ci.yml)
+      - name: Найти папку проекта
+        id: app
+        shell: bash
+        run: |
+          if [ -f package.json ]; then
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          else
+            d=$(dirname "$(find . -maxdepth 3 -name package.json -not -path '*/node_modules/*' | head -1)")
+            echo "dir=$d" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Версия
+        id: meta
+        working-directory: ${{ steps.app.outputs.dir }}
+        run: |
+          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "artifact=frost-android-$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: ${{ steps.app.outputs.dir }}/package-lock.json
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ steps.app.outputs.dir }}/src-tauri -> target
+          shared-key: android
+
+      # NDK для Rust; libclang и заголовки NDK для bindgen: у QuickJS (rquickjs) нет готовых
+      # привязок под Android, их генерирует bindgen во время сборки.
+      - name: Android NDK и libclang
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          ndk="$ANDROID_HOME/ndk/$NDK_VERSION"
+          if [ ! -d "$ndk" ]; then
+            yes | "$sdkmanager" --licenses > /dev/null || true
+            "$sdkmanager" --install "ndk;$NDK_VERSION" > /dev/null || true
+          fi
+          if [ ! -d "$ndk" ]; then
+            # Запасной вариант: самый новый установленный NDK r28+
+            ndk=$(ls -d "$ANDROID_HOME"/ndk/2[8-9].* "$ANDROID_HOME"/ndk/[3-9][0-9].* 2>/dev/null | sort -V | tail -1)
+          fi
+          [ -d "$ndk" ] || { echo "::error::Не удалось установить Android NDK $NDK_VERSION"; exit 1; }
+          echo "Android NDK: $ndk"
+          echo "NDK_HOME=$ndk" >> "$GITHUB_ENV"
+
+          sysroot="$ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
+          echo "BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android=--sysroot=$sysroot" >> "$GITHUB_ENV"
+          echo "BINDGEN_EXTRA_CLANG_ARGS_armv7_linux_androideabi=--sysroot=$sysroot" >> "$GITHUB_ENV"
+
+          libclang=$(ls /usr/lib/llvm-*/lib/libclang.so /usr/lib/llvm-*/lib/libclang-*.so* 2>/dev/null | sort -V | tail -1)
+          if [ -z "$libclang" ]; then
+            sudo apt-get update -q && sudo apt-get install -yq libclang-dev
+            libclang=$(ls /usr/lib/llvm-*/lib/libclang.so /usr/lib/llvm-*/lib/libclang-*.so* 2>/dev/null | sort -V | tail -1)
+          fi
+          echo "libclang: $libclang"
+          echo "LIBCLANG_PATH=$(dirname "$libclang")" >> "$GITHUB_ENV"
+
+      - name: Зависимости
+        working-directory: ${{ steps.app.outputs.dir }}
+        run: npm ci
+
+      # Проект Gradle создаётся заново из шаблона Tauri и донастраивается скриптом
+      - name: Android-проект
+        working-directory: ${{ steps.app.outputs.dir }}
+        run: |
+          npm run tauri -- android init --ci --skip-targets-install
+          node scripts/android-setup.mjs
+
+      - name: Ключ подписи
+        id: sign
+        working-directory: ${{ steps.app.outputs.dir }}/src-tauri/gen/android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/frost-release.jks"
+            # Обратная косая черта в .properties экранирует символ, поэтому удваиваем её
+            esc() { printf '%s' "$1" | sed 's/\\/\\\\/g'; }
+            {
+              echo "storeFile=$(esc "$RUNNER_TEMP/frost-release.jks")"
+              echo "storePassword=$(esc "$KEYSTORE_PASSWORD")"
+              echo "keyAlias=$(esc "$KEY_ALIAS")"
+              echo "keyPassword=$(esc "${KEY_PASSWORD:-$KEYSTORE_PASSWORD}")"
+            } > keystore.properties
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Секретов подписи нет: APK будет подписан временным отладочным ключом и не попадёт в релиз. См. docs/ANDROID.md"
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Сборка APK
+        working-directory: ${{ steps.app.outputs.dir }}
+        run: npm run tauri -- android build --apk --target aarch64 armv7 --ci
+
+      - name: Подпись и имя файла
+        id: apk
+        working-directory: ${{ steps.app.outputs.dir }}
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          SIGNED: ${{ steps.sign.outputs.signed }}
+        run: |
+          out=src-tauri/gen/android/app/build/outputs/apk/universal/release
+          ls -la "$out"
+          mkdir -p dist-android
+          if [ "$SIGNED" = "true" ]; then
+            apk="$out/app-universal-release.apk"
+            [ -f "$apk" ] || { echo "::error::Нет подписанного APK: проверьте секреты подписи"; exit 1; }
+            dest="dist-android/Frost_${VERSION}_android.apk"
+            cp "$apk" "$dest"
+          else
+            apk="$out/app-universal-release-unsigned.apk"
+            [ -f "$apk" ] || { echo "::error::Нет APK после сборки"; exit 1; }
+            bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+            keytool -genkeypair -keystore "$RUNNER_TEMP/debug.jks" -storepass android -keypass android \
+              -alias frost-debug -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Frost Debug" > /dev/null
+            dest="dist-android/Frost_${VERSION}_android-debugsigned.apk"
+            "$bt/zipalign" -f 4 "$apk" "$RUNNER_TEMP/aligned.apk"
+            "$bt/apksigner" sign --ks "$RUNNER_TEMP/debug.jks" --ks-pass pass:android \
+              --ks-key-alias frost-debug --out "$dest" "$RUNNER_TEMP/aligned.apk"
+          fi
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$bt/apksigner" verify --print-certs "$dest" | head -5
+          ls -la dist-android
+          echo "path=$dest" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.meta.outputs.artifact }}
+          path: ${{ steps.app.outputs.dir }}/${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+
+      - name: Убрать ключ
+        if: always()
+        working-directory: ${{ steps.app.outputs.dir }}
+        run: rm -f "$RUNNER_TEMP/frost-release.jks" src-tauri/gen/android/keystore.properties

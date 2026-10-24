@@ -1,0 +1,1030 @@
+/*
+ * Frost для Android: оболочка телефона (Material 3).
+ * Всё ограничено [data-platform='android'] (ставит src/lib/platform.ts), окно Windows не затрагивается.
+ *
+ * Отступы системных панелей и клавиатуры приходят из плагина frost-mobile:
+ *   --frost-inset-top/bottom/left/right  строка состояния, панель навигации, вырез камеры;
+ *   --m-ime                              клавиатура (если WebView не уменьшилась сама).
+ */
+
+[data-platform='android'] {
+  --safe-top: var(--frost-inset-top, 0px);
+  --safe-bottom: var(--frost-inset-bottom, 0px);
+  --safe-left: var(--frost-inset-left, 0px);
+  --safe-right: var(--frost-inset-right, 0px);
+  --m-top-h: 56px;
+  --m-nav-h: 76px;
+  --m-mini-h: 64px;
+  --titlebar-h: 0px;
+  --player-h: 0px;
+  --gutter: 16px;
+  --font: Roboto, 'Google Sans Text', 'Noto Sans', system-ui, sans-serif;
+  --font-display: 'Google Sans', Roboto, 'Noto Sans', system-ui, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* ---------- Касания вместо мыши ---------- */
+
+[data-platform='android'] body {
+  min-width: 0 !important;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+[data-platform='android'] * {
+  -webkit-tap-highlight-color: transparent;
+}
+
+[data-platform='android'] input,
+[data-platform='android'] textarea,
+[data-platform='android'] [contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Полосы прокрутки на телефоне не нужны */
+[data-platform='android'] ::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+[data-platform='android'] .slider {
+  touch-action: none;
+}
+
+[data-platform='android'] .icon-btn {
+  min-width: 40px;
+  min-height: 40px;
+}
+
+[data-platform='android'] .btn {
+  min-height: 40px;
+}
+
+/* «Залипающее» наведение после касания: подсветку даёт только нажатие */
+@media (hover: none) {
+  [data-platform='android'] .track-row:hover,
+  [data-platform='android'] .queue-item:hover,
+  [data-platform='android'] .card:hover {
+    background-color: transparent;
+  }
+
+  [data-platform='android'] .track-row:active,
+  [data-platform='android'] .queue-item:active {
+    background-color: color-mix(in srgb, var(--md-on-surface) 10%, transparent);
+  }
+}
+
+/* ---------- Каркас ---------- */
+
+.app--mobile {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--safe-right) var(--m-ime, 0px) var(--safe-left);
+  background: var(--md-surface);
+  color: var(--md-on-surface);
+  overflow: hidden;
+}
+
+.app--mobile::before,
+.app--mobile::after {
+  display: none;
+}
+
+/* Верхняя панель */
+.m-top {
+  position: relative;
+  z-index: 5;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: calc(var(--m-top-h) + var(--safe-top));
+  padding: var(--safe-top) 8px 0;
+  background: var(--md-surface);
+}
+
+.m-top__logo {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex: none;
+  color: var(--md-primary);
+}
+
+.m-top__back {
+  width: 48px !important;
+  height: 48px !important;
+  flex: none;
+}
+
+.m-top__title {
+  flex: 1;
+  min-width: 0;
+  padding-left: 4px;
+  overflow: hidden;
+  font: 500 20px/28px var(--font-display);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.m-search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  height: 48px;
+  margin-right: 4px;
+  padding: 0 4px 0 16px;
+  border-radius: 24px;
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface-variant);
+}
+
+.m-search__icon {
+  flex: none;
+}
+
+.m-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--md-on-surface);
+  font: 400 16px/24px var(--font);
+}
+
+.m-search input::placeholder {
+  color: var(--md-on-surface-variant);
+}
+
+/* Страница */
+.app--mobile .m-main {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.app--mobile .main__scroll {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+}
+
+/* ---------- Нижняя панель навигации ---------- */
+
+.m-nav {
+  position: relative;
+  z-index: 5;
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  height: calc(var(--m-nav-h) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: var(--md-surface-container);
+}
+
+.m-nav__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 0 14px;
+  border: 0;
+  background: none;
+  color: var(--md-on-surface-variant);
+  font: 500 12px/16px var(--font);
+  letter-spacing: 0.02em;
+}
+
+.m-nav__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 32px;
+  border-radius: 16px;
+  transition:
+    background-color var(--dur-2, 200ms) var(--md-easing, ease),
+    color var(--dur-2, 200ms) var(--md-easing, ease);
+}
+
+.m-nav__label {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.m-nav__item.is-active {
+  color: var(--md-on-surface);
+  font-weight: 600;
+}
+
+.m-nav__item.is-active .m-nav__icon {
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+}
+
+.m-nav__item:active .m-nav__icon {
+  background: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
+}
+
+.m-nav__item.is-active:active .m-nav__icon {
+  background: color-mix(in srgb, var(--md-secondary-container) 80%, var(--md-on-surface));
+}
+
+/* Пока открыта клавиатура, нижние панели не занимают место */
+[data-ime='open'] .m-nav,
+[data-ime='open'] .m-mini {
+  display: none;
+}
+
+/* ---------- Мини-плеер ---------- */
+
+.m-mini {
+  position: relative;
+  z-index: 6;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: var(--m-mini-h);
+  margin: 0 8px 8px;
+  padding: 0 4px 0 8px;
+  border-radius: var(--md-shape-l, 16px);
+  background: var(--md-surface-container-high);
+  box-shadow: var(--md-elev-2, none);
+  overflow: hidden;
+  touch-action: pan-y;
+  animation: m-rise var(--dur-3, 280ms) var(--md-easing-decel, ease-out);
+}
+
+.m-mini__open {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+
+.m-mini__open .artwork {
+  flex: none;
+}
+
+.m-mini__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.m-mini__title {
+  overflow: hidden;
+  font: 500 14px/20px var(--font);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.m-mini__artist {
+  overflow: hidden;
+  color: var(--md-on-surface-variant);
+  font: 400 12px/16px var(--font);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.m-mini .icon-btn {
+  width: 44px;
+  height: 44px;
+  flex: none;
+}
+
+.m-mini__play {
+  color: var(--md-on-surface);
+}
+
+.m-mini__progress {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--md-primary);
+  transform-origin: left center;
+  pointer-events: none;
+}
+
+@keyframes m-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+/* ---------- «Сейчас играет» ---------- */
+
+.m-np {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  padding: var(--safe-top) calc(var(--safe-right) + 20px) calc(var(--safe-bottom) + 12px)
+    calc(var(--safe-left) + 20px);
+  padding-bottom: calc(var(--safe-bottom) + 12px + var(--m-ime, 0px));
+  background: var(--md-surface);
+  color: var(--md-on-surface);
+  overflow: hidden;
+  transition: transform var(--dur-2, 220ms) var(--md-easing, ease);
+  animation: m-np-in 320ms var(--md-easing-decel, cubic-bezier(0.05, 0.7, 0.1, 1));
+}
+
+@keyframes m-np-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+.m-np__bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.m-np__bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.45;
+  filter: blur(64px) saturate(1.5);
+  transform: scale(1.4);
+}
+
+.m-np__bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--md-surface) 30%, transparent) 0%,
+    color-mix(in srgb, var(--md-surface) 70%, transparent) 55%,
+    var(--md-surface) 100%
+  );
+}
+
+.m-np__top {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 56px;
+  margin: 0 -10px;
+  touch-action: none;
+}
+
+.m-np__top .icon-btn {
+  width: 48px;
+  height: 48px;
+  flex: none;
+}
+
+.m-np__source {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  text-align: center;
+}
+
+.m-np__source .eyebrow {
+  color: var(--md-on-surface-variant);
+  font: 500 11px/16px var(--font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.m-np__source-name {
+  max-width: 60vw;
+  overflow: hidden;
+  font: 500 14px/20px var(--font);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.m-np__body {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 12px 0 8px;
+}
+
+.m-np__art-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  container-type: size;
+  touch-action: none;
+}
+
+.m-np__art {
+  width: min(100cqw, 100cqh) !important;
+  height: min(100cqw, 100cqh) !important;
+  max-width: 520px;
+  max-height: 520px;
+  box-shadow: var(--md-elev-3, 0 8px 24px rgb(0 0 0 / 0.3));
+  transition: transform var(--dur-3, 300ms) var(--md-easing, ease);
+}
+
+.m-np:not(.is-playing) .m-np__art {
+  transform: scale(0.92);
+}
+
+.m-np__panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--md-shape-xl, 28px);
+  background: color-mix(in srgb, var(--md-surface-container) 75%, transparent);
+  overflow: hidden;
+  animation: m-fade var(--dur-2, 200ms) ease-out;
+}
+
+.m-np__panel .lyrics {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.m-np__panel .lyrics--large .lyrics__line {
+  font-size: calc(22px * var(--ts, 1));
+  line-height: 1.35;
+}
+
+.m-np__panel .queue {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.m-np__panel .queue-item__remove {
+  opacity: 1;
+  visibility: visible;
+}
+
+@keyframes m-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.m-np__meta {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.m-np__titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.m-np__title {
+  margin: 0;
+  overflow: hidden;
+  font: 600 22px/28px var(--font-display);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.m-np__artist {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  color: var(--md-on-surface-variant);
+  font: 400 16px/24px var(--font);
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.m-np__meta .icon-btn {
+  width: 48px;
+  height: 48px;
+  flex: none;
+}
+
+.m-np__seek {
+  flex: none;
+  margin-top: 12px;
+}
+
+/* Ползунок во всю ширину, время под ним */
+.m-np__seek .seek {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  row-gap: 2px;
+  width: 100%;
+}
+
+.m-np__seek .seek__slider {
+  grid-row: 1;
+  grid-column: 1 / -1;
+}
+
+.m-np__seek .seek__time {
+  grid-row: 2;
+  grid-column: 1;
+  width: auto;
+  color: var(--md-on-surface-variant);
+  font-size: 12px;
+  text-align: left;
+}
+
+.m-np__seek .seek__time--end {
+  grid-column: 3;
+  text-align: right;
+}
+
+.m-np__controls {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  margin: 6px 0 4px;
+}
+
+.m-np__controls .controls {
+  justify-content: space-between;
+  width: 100%;
+  max-width: 420px;
+  gap: 4px;
+}
+
+.m-np__controls .icon-btn {
+  width: 48px;
+  height: 48px;
+}
+
+.m-np__tabs {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.m-np__tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 48px;
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  color: var(--md-on-surface-variant);
+  font: 500 14px/20px var(--font);
+}
+
+.m-np__tab.is-on {
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+}
+
+.m-np__tab:active {
+  background: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
+}
+
+/* Невысокие экраны (и телефон, повёрнутый боком): обложка уступает место управлению */
+@media (max-height: 560px) {
+  .m-np__body {
+    padding: 4px 0;
+  }
+
+  .m-np__tabs {
+    margin-top: 2px;
+  }
+
+  .m-np__title {
+    font-size: 18px;
+    line-height: 24px;
+  }
+}
+
+/* ---------- Нижний лист вместо контекстного меню ---------- */
+
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: color-mix(in srgb, var(--md-scrim, #000) 40%, transparent);
+  animation: m-fade 160ms ease-out;
+}
+
+.sheet.menu {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  min-width: 0;
+  max-width: 640px;
+  max-height: 80vh;
+  margin: 0;
+  padding: 0 0 calc(12px + var(--safe-bottom));
+  border: 0;
+  border-radius: 28px 28px 0 0;
+  background: var(--md-surface-container-low);
+  box-shadow: var(--md-elev-1, none);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  animation: m-sheet-in 280ms var(--md-easing-decel, cubic-bezier(0.05, 0.7, 0.1, 1));
+}
+
+@keyframes m-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+.sheet__handle {
+  width: 32px;
+  height: 4px;
+  margin: 12px auto 10px;
+  border-radius: 2px;
+  background: var(--md-on-surface-variant);
+  opacity: 0.4;
+}
+
+.sheet .menu__item {
+  gap: 16px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 24px;
+  border-radius: 0;
+  font: 400 16px/24px var(--font);
+}
+
+.sheet .menu__icon {
+  color: var(--md-on-surface-variant);
+}
+
+.sheet .menu__sep {
+  margin: 6px 0;
+}
+
+/* ---------- Страницы ---------- */
+
+.app--mobile .page {
+  max-width: none;
+  padding: 4px var(--gutter) 24px;
+}
+
+.app--mobile .page-head {
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.app--mobile .page-head--row {
+  align-items: flex-start;
+}
+
+.app--mobile .page-title,
+.app--mobile .home-head__title {
+  font-size: 28px;
+  line-height: 36px;
+}
+
+.app--mobile .home-head {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.app--mobile .section__head {
+  gap: 8px;
+}
+
+.app--mobile .section__title,
+.app--mobile .subsection__title {
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.app--mobile .tabs,
+.app--mobile .chip-row,
+.app--mobile .segmented {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-wrap: nowrap;
+}
+
+.app--mobile .toolbar {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Сетки карточек: две колонки, на планшете три-четыре */
+.app--mobile .card-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 12px;
+}
+
+.app--mobile .quick-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.app--mobile .quick-tile {
+  height: 56px;
+}
+
+.app--mobile .genre-grid,
+.app--mobile .genre-grid--large {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.app--mobile .search-top {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 600px) {
+  .app--mobile .card-grid,
+  .app--mobile .genre-grid,
+  .app--mobile .genre-grid--large {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .app--mobile .quick-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 840px) {
+  .app--mobile .card-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Шапка плейлиста и альбома: обложка над названием */
+.app--mobile .collection-header {
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding-top: 8px;
+  text-align: center;
+}
+
+.app--mobile .collection-header .collection-header__art,
+.app--mobile .collection-header__art {
+  width: min(220px, 62vw) !important;
+  height: min(220px, 62vw) !important;
+}
+
+.app--mobile .collection-header__info {
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.app--mobile .collection-header__title {
+  font-size: 26px;
+  line-height: 32px;
+  overflow-wrap: anywhere;
+}
+
+.app--mobile .collection-header__actions {
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Шапка артиста */
+.app--mobile .artist-hero {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  min-height: 0;
+  padding: 24px 16px 20px;
+}
+
+.app--mobile .artist-hero__name {
+  font-size: 32px;
+  line-height: 40px;
+  overflow-wrap: anywhere;
+}
+
+.app--mobile .page-hero {
+  padding: 20px 16px;
+}
+
+.app--mobile .page-hero__actions {
+  flex-wrap: wrap;
+}
+
+/* ---------- Списки треков ---------- */
+
+.app--mobile .track-row {
+  grid-template-columns: minmax(0, 1fr) 40px 40px;
+  gap: 4px;
+  min-height: 60px;
+  padding: 4px 0 4px 4px;
+}
+
+.app--mobile .track-row__index,
+.app--mobile .track-row__meta,
+.app--mobile .track-row__duration,
+.app--mobile .track-row--header {
+  display: none;
+}
+
+/* Кнопки, которые в Windows появляются при наведении, на телефоне видны всегда */
+.app--mobile .track-row .icon-btn,
+.app--mobile .track-row .like {
+  width: 40px;
+  height: 40px;
+  opacity: 1;
+  visibility: visible;
+}
+
+.app--mobile .queue-item__remove {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ---------- Настройки ---------- */
+
+.app--mobile .settings-group {
+  padding: 16px 12px 12px;
+  border-radius: var(--md-shape-xl, 24px);
+}
+
+.app--mobile .setting-row {
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 12px 8px;
+}
+
+.app--mobile .setting-row > :last-child {
+  max-width: 100%;
+}
+
+.app--mobile .tool-card {
+  padding: 14px;
+}
+
+.app--mobile .inline-form {
+  flex-wrap: wrap;
+}
+
+.app--mobile .select,
+.app--mobile .input {
+  max-width: 100%;
+  min-height: 44px;
+  font-size: 16px;
+}
+
+/* ---------- Медиатека: ярлыки сверху ---------- */
+
+.m-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 20px;
+}
+
+.m-shortcut {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  height: 56px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--md-shape-l, 16px);
+  background: var(--md-surface-container);
+  color: var(--md-on-surface);
+  font: 500 14px/20px var(--font);
+  text-align: left;
+}
+
+.m-shortcut svg {
+  flex: none;
+  color: var(--md-primary);
+}
+
+.m-shortcut span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.m-shortcut:active {
+  background: var(--md-surface-container-high);
+}
+
+/* ---------- Всплывающие окна, уведомления, знакомство ---------- */
+
+[data-platform='android'] .modal-scrim {
+  padding: var(--safe-top) 16px calc(var(--safe-bottom) + var(--m-ime, 0px));
+}
+
+[data-platform='android'] .modal {
+  width: calc(100vw - 32px);
+  max-width: 480px;
+  max-height: calc(100vh - var(--safe-top) - var(--safe-bottom) - var(--m-ime, 0px) - 32px);
+  overflow-y: auto;
+  border-radius: var(--md-shape-xl, 28px);
+}
+
+[data-platform='android'] .modal__actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.app--mobile .toasts {
+  bottom: calc(var(--m-nav-h) + var(--safe-bottom) + var(--m-ime, 0px) + 16px);
+  width: calc(100% - 32px);
+  max-width: 480px;
+}
+
+.app--mobile.has-track .toasts {
+  bottom: calc(var(--m-nav-h) + var(--m-mini-h) + var(--safe-bottom) + var(--m-ime, 0px) + 24px);
+}
+
+[data-platform='android'] .tour__card {
+  left: 16px !important;
+  right: 16px !important;
+  width: auto !important;
+  max-width: none;
+}
+
+[data-platform='android'] .sleep-menu {
+  left: 16px !important;
+  right: 16px !important;
+  bottom: calc(var(--safe-bottom) + 96px) !important;
+  min-width: 0;
+}
+
+[data-platform='android'] .menu__item {
+  min-height: 44px;
+}
+
+/* Меньше движения: без «въезда» листов и плеера */
+@media (prefers-reduced-motion: reduce) {
+  .m-np,
+  .m-mini,
+  .sheet.menu,
+  .sheet-scrim,
+  .m-np__panel {
+    animation: none;
+  }
+}

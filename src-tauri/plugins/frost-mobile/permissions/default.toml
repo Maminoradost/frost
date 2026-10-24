@@ -1,0 +1,20 @@
+"$schema" = "schemas/schema.json"
+
+[default]
+description = "Все команды нативной части Frost (на десктопе они не используются)."
+permissions = [
+  "allow-update-session",
+  "allow-clear-session",
+  "allow-get-insets",
+  "allow-set-system-bars",
+  "allow-minimize",
+  "allow-keep-screen-on",
+  "allow-native-info",
+  "allow-pick-folder",
+  "allow-request-audio-permission",
+  "allow-install-apk",
+  "allow-share",
+  "allow-save-document",
+  "allow-register-listener",
+  "allow-remove-listener",
+]

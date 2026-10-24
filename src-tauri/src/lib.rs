@@ -5,15 +5,19 @@
 //! * `stream`: собственный протокол `frost://`: CORS-чистый прокси аудио с Range-запросами
 //!   и переписыванием HLS-плейлистов (нужен для эквалайзера/визуализатора в WebAudio);
 //! * `lyrics`: синхронизированные тексты песен (LRCLIB);
-//! * `commands`: команды, доступные фронтенду через `invoke`.
+//! * `commands`: команды, доступные фронтенду через `invoke`;
+//! * `loopback`: локальный HTTP-сервер звука для Android (обход бага WebView с Range);
+//! * `platform`: различия Windows/Android (встроенный botguard и т. п.).
 
 mod extras;
 mod commands;
 mod config;
 mod error;
+mod loopback;
 mod lyrics;
 mod models;
 mod net;
+mod platform;
 mod providers;
 mod state;
 mod stream;
@@ -24,7 +28,11 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+
+    // Только компьютер: один экземпляр, размер окна, глобальные клавиши, автозапуск.
+    #[cfg(desktop)]
+    let builder = builder
         // Второй запуск просто фокусирует уже открытое окно.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
@@ -34,10 +42,14 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_autostart::Builder::new().args(["--autostart"]).build());
+
+    builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .plugin(tauri_plugin_autostart::Builder::new().args(["--autostart"]).build())
+        // Android: уведомление плеера, «Назад», системные отступы, разрешения, установка APK.
+        .plugin(tauri_plugin_frost_mobile::init())
         .manage(AppState::new())
         .manage(extras::Discord::default())
         .register_asynchronous_uri_scheme_protocol("frost", |ctx, request, responder| {
@@ -53,6 +65,13 @@ pub fn run() {
             // Кэш скачанного звука YouTube: в папке кэша (LocalAppData), не в настройках.
             let cache = app.path().app_cache_dir().unwrap_or(dir).join("audio");
             app.state::<AppState>().audio.init(cache);
+
+            // Android: звук идёт через локальный HTTP-сервер, а не через frost:// (см. loopback.rs).
+            #[cfg(target_os = "android")]
+            match loopback::start(app.handle().clone()) {
+                Ok(base) => stream::set_base_url(base),
+                Err(err) => eprintln!("[frost] не удалось запустить аудиосервер: {err}"),
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -68,6 +87,7 @@ pub fn run() {
             extras::app_quit,
             extras::mini_open,
             extras::mini_close,
+            loopback::media_base,
             commands::get_config,
             commands::set_config,
             commands::app_info,

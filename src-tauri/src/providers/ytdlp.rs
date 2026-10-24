@@ -78,6 +78,9 @@ pub fn find_ytdlp(st: &AppState) -> Option<PathBuf> {
 /// rustypipe-botguard: решает проверку YouTube и выдаёт PO-токены для RustyPipe.
 /// Ищется только в папке Frost: RustyPipe берёт его оттуда же.
 pub fn find_botguard(st: &AppState) -> Option<PathBuf> {
+    if let Some(bundled) = crate::platform::bundled_botguard() {
+        return Some(bundled);
+    }
     bin_dir(st)
         .map(|dir| dir.join(exe("rustypipe-botguard")))
         .filter(|path| path.is_file())
@@ -390,6 +393,9 @@ async fn download(st: &AppState, url: &str, dest: &Path) -> AppResult<()> {
 
 /// Скачивает официальный yt-dlp.exe в папку данных Frost.
 pub async fn install(st: &AppState) -> AppResult<YtdlpStatus> {
+    if cfg!(target_os = "android") {
+        return Err(AppError::msg(crate::platform::ANDROID_UNSUPPORTED));
+    }
     let dir = bin_dir(st).ok_or_else(|| AppError::msg("Папка данных недоступна"))?;
     download(st, YTDLP_URL, &dir.join(exe("yt-dlp"))).await?;
     Ok(status(st).await)
@@ -506,6 +512,9 @@ pub fn remove_botguard(st: &AppState) {
 
 /// Скачивает Deno (JS-движок для yt-dlp) и распаковывает встроенным PowerShell.
 pub async fn install_deno(st: &AppState) -> AppResult<YtdlpStatus> {
+    if cfg!(target_os = "android") {
+        return Err(AppError::msg(crate::platform::ANDROID_UNSUPPORTED));
+    }
     let dir = bin_dir(st).ok_or_else(|| AppError::msg("Папка данных недоступна"))?;
     let zip = dir.join("deno.zip");
     download(st, DENO_URL, &zip).await?;

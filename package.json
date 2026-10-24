@@ -4,10 +4,10 @@
   "version": "0.9.1",
   "description": "Музыкальный плеер для Windows: YouTube Music и SoundCloud в стиле Material You",
   "license": "GPL-3.0-or-later",
-  "homepage": "https://github.com/Maminoradost/frost",
+  "homepage": "https://github.com/Susanoooooooo/Frost",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Maminoradost/frost.git"
+    "url": "git+https://github.com/Susanoooooooo/Frost.git"
   },
   "type": "module",
   "scripts": {

@@ -1,7 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Права главного окна Frost",
+  "description": "Права окон Frost на компьютере (Windows, macOS, Linux)",
+  "platforms": [
+    "windows",
+    "macOS",
+    "linux"
+  ],
   "windows": [
     "main",
     "mini"

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug: `tauri android dev` грузит фронтенд с dev-сервера по HTTP (адрес компьютера в сети). -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

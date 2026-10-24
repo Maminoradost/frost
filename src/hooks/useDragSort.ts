@@ -1,11 +1,13 @@
 /**
  * Перетаскивание строк мышью (HTML5 drag and drop) и с клавиатуры: Alt+↑ / Alt+↓.
  * В Windows для этого у окна выключен системный приём файлов (dragDropEnabled: false).
+ * На Android перетаскивание выключено: долгое нажатие открывает меню строки.
  */
 import { useState, type DragEvent, type KeyboardEvent } from 'react';
+import { IS_ANDROID } from '../lib/platform';
 
 export interface DragItemProps {
-  draggable: true;
+  draggable: boolean;
   onDragStart: (e: DragEvent<HTMLElement>) => void;
   onDragOver: (e: DragEvent<HTMLElement>) => void;
   onDrop: (e: DragEvent<HTMLElement>) => void;
@@ -31,7 +33,7 @@ export function useDragSort(count: number, onMove: (from: number, to: number) =>
   const [drag, setDrag] = useState<DragState | null>(null);
 
   const itemProps = (index: number): DragItemProps => ({
-    draggable: true,
+    draggable: !IS_ANDROID,
     onDragStart: (e) => {
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', String(index));

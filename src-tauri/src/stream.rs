@@ -50,7 +50,18 @@ pub struct StreamRegistry {
     inner: Mutex<Registry>,
 }
 
+/// Базовый адрес, заданный при запуске (на Android это локальный HTTP-сервер, см. loopback.rs).
+static BASE_OVERRIDE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+#[cfg_attr(not(target_os = "android"), allow(dead_code))]
+pub fn set_base_url(url: String) {
+    let _ = BASE_OVERRIDE.set(url);
+}
+
 pub fn base_url() -> &'static str {
+    if let Some(url) = BASE_OVERRIDE.get() {
+        return url.as_str();
+    }
     if cfg!(any(windows, target_os = "android")) {
         "http://frost.localhost/"
     } else {
@@ -381,7 +392,7 @@ fn guess_content_type(url: &Url) -> &'static str {
 }
 
 /// `bytes=START-[END]` → (start, end). Множественные/суффиксные диапазоны не поддерживаем.
-fn parse_range(value: &str) -> Option<(u64, Option<u64>)> {
+pub(crate) fn parse_range(value: &str) -> Option<(u64, Option<u64>)> {
     let spec = value.trim().strip_prefix("bytes=")?;
     let first = spec.split(',').next()?.trim();
     let (start, end) = first.split_once('-')?;

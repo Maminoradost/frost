@@ -2,6 +2,7 @@ import { Clock, Ellipsis, Heart, Pause, Play } from 'lucide-react';
 import { memo, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { useDragSort, type DragItemProps } from '../hooks/useDragSort';
 import { formatCount, formatTime } from '../lib/format';
+import { IS_ANDROID } from '../lib/platform';
 import type { Track } from '../lib/types';
 import { trackKey } from '../lib/types';
 import { useLibrary } from '../store/library';
@@ -138,6 +139,8 @@ const TrackRow = memo(function TrackRow({
       className={`track-row ${active ? 'is-active' : ''} ${track.streamable ? '' : 'is-disabled'} ${drag?.dragClass ?? ''}`}
       role="listitem"
       onDoubleClick={() => onPlay(index)}
+      // На телефоне трек включается одним касанием (кроме кнопок внутри строки)
+      onClick={IS_ANDROID ? (e) => !(e.target as HTMLElement).closest('button, a, input') && handlePlay() : undefined}
       onContextMenu={openMenu}
       draggable={drag?.draggable}
       onDragStart={drag?.onDragStart}

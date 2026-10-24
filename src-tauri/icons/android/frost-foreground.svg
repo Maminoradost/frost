@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 108 108">
+  <!-- Передний план адаптивного значка: кольцо и точка, в безопасной зоне 66 dp -->
+  <circle cx="54" cy="54" r="17.7" fill="none" stroke="#fff" stroke-opacity="0.92" stroke-width="5.9"/>
+  <circle cx="54" cy="54" r="5.6" fill="#fff"/>
+</svg>

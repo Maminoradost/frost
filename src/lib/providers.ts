@@ -1,4 +1,5 @@
 import type { Provider, SourceProvider } from './types';
+import { IS_ANDROID } from './platform';
 
 export interface ProviderMeta {
   label: string;
@@ -32,8 +33,8 @@ export const PROVIDERS: Record<Provider, ProviderMeta> = {
     hint: 'Источник v0.1. Треки из медиатеки находятся заново в SoundCloud/YouTube Music.',
   },
   local: {
-    label: 'Файлы на компьютере',
-    short: 'PC',
+    label: IS_ANDROID ? 'Файлы на телефоне' : 'Файлы на компьютере',
+    short: IS_ANDROID ? 'Тел' : 'PC',
     color: '#7c8cff',
     active: true,
     hint: 'Музыка из ваших папок: MP3, FLAC, M4A, OGG, OPUS, WAV.',

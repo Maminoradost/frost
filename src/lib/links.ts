@@ -8,7 +8,7 @@ export const TELEGRAM_URL = 'https://t.me/+5N4FXvQT9C8wYjNi';
  * Если указан, Frost раз в день проверяет новые релизы и тихо сообщает об обновлении.
  * Пустая строка отключает проверку.
  */
-export const GITHUB_REPO = 'Maminoradost/frost';
+export const GITHUB_REPO = 'Susanoooooooo/Frost';
 
 export const githubUrl = (path = '') => (GITHUB_REPO ? `https://github.com/${GITHUB_REPO}${path}` : '');
 

@@ -2,6 +2,7 @@ import { ListMusic, X } from 'lucide-react';
 import type { Track } from '../lib/types';
 import { trackKey } from '../lib/types';
 import { useDragSort, type DragItemProps } from '../hooks/useDragSort';
+import { IS_ANDROID } from '../lib/platform';
 import { usePlayer } from '../store/player';
 import { useUi } from '../store/ui';
 import { Artwork } from './Artwork';
@@ -113,6 +114,7 @@ function QueueItem({
     <div
       className={`queue-item ${active ? 'is-active' : ''} ${drag?.dragClass ?? ''}`}
       onDoubleClick={onPlay}
+      onClick={IS_ANDROID && onPlay ? (e) => !(e.target as HTMLElement).closest('button') && onPlay() : undefined}
       draggable={drag?.draggable}
       onDragStart={drag?.onDragStart}
       onDragOver={drag?.onDragOver}

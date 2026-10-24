@@ -8,6 +8,7 @@ import { TrackList } from '../components/TrackList';
 import { plural, totalDuration, tracksLabel } from '../lib/format';
 import type { Track } from '../lib/types';
 import { isTauri } from '../lib/window';
+import { DEVICE_FILES_LABEL, IS_ANDROID } from '../lib/platform';
 import { useLocal } from '../store/local';
 import { usePlayer } from '../store/player';
 import { useSettings } from '../store/settings';
@@ -51,7 +52,7 @@ export function LocalPage({ tab }: { tab: LocalTab }) {
   if (!isTauri) {
     return (
       <div className="page">
-        <EmptyState icon={<HardDrive size={30} />} title="Доступно в приложении" text="Музыка с компьютера работает только в установленном Frost." />
+        <EmptyState icon={<HardDrive size={30} />} title="Доступно в приложении" text="Музыка с устройства работает только в установленном Frost." />
       </div>
     );
   }
@@ -60,7 +61,7 @@ export function LocalPage({ tab }: { tab: LocalTab }) {
     return (
       <div className="page">
         <div className="page-head">
-          <h1 className="page-title">На компьютере</h1>
+          <h1 className="page-title">{DEVICE_FILES_LABEL}</h1>
         </div>
         <EmptyState
           icon={<HardDrive size={30} />}
@@ -84,7 +85,7 @@ export function LocalPage({ tab }: { tab: LocalTab }) {
           <ArrowLeft size={16} /> Все альбомы
         </button>
         <CollectionHeader
-          kind="Альбом с компьютера"
+          kind={IS_ANDROID ? 'Альбом с телефона' : 'Альбом с компьютера'}
           title={album.title}
           art={<Artwork src={album.artwork} radius={16} />}
           meta={
@@ -113,7 +114,7 @@ export function LocalPage({ tab }: { tab: LocalTab }) {
           <ArrowLeft size={16} /> Назад
         </button>
         <CollectionHeader
-          kind="Артист с компьютера"
+          kind={IS_ANDROID ? 'Артист с телефона' : 'Артист с компьютера'}
           title={artist.name}
           art={<Artwork src={artist.artwork} round />}
           meta={
@@ -134,17 +135,17 @@ export function LocalPage({ tab }: { tab: LocalTab }) {
     <div className="page page--local">
       <div className="page-head local-head">
         <div>
-          <h1 className="page-title">На компьютере</h1>
+          <h1 className="page-title">{DEVICE_FILES_LABEL}</h1>
           <div className="page-subtitle">
             {tracksLabel(tracks.length)} · {albums.length} {plural(albums.length, 'альбом', 'альбома', 'альбомов')}
             {tracks.length > 0 && ` · ${totalDuration(tracks)}`}
           </div>
         </div>
         <div className="local-head__actions">
-          <button className="btn btn--primary" disabled={!tracks.length} onClick={() => play(tracks, 'На компьютере')}>
+          <button className="btn btn--primary" disabled={!tracks.length} onClick={() => play(tracks, DEVICE_FILES_LABEL)}>
             Слушать
           </button>
-          <button className="btn btn--ghost" disabled={!tracks.length} onClick={() => shuffle(tracks, 'На компьютере')}>
+          <button className="btn btn--ghost" disabled={!tracks.length} onClick={() => shuffle(tracks, DEVICE_FILES_LABEL)}>
             Перемешать
           </button>
           <button className="btn btn--ghost" onClick={() => void addFolder()}>
@@ -221,7 +222,7 @@ export function LocalPage({ tab }: { tab: LocalTab }) {
         />
       )}
 
-      {tab === 'tracks' && shownTracks.length > 0 && <TrackList tracks={shownTracks} source="На компьютере" showHeader showPlays={false} />}
+      {tab === 'tracks' && shownTracks.length > 0 && <TrackList tracks={shownTracks} source={DEVICE_FILES_LABEL} showHeader showPlays={false} />}
 
       {tab === 'albums' && (
         <div className="card-grid">

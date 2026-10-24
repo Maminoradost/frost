@@ -1,4 +1,4 @@
-# Сборка установщика для Windows и черновика релиза на GitHub.
+# Сборка установщика для Windows, APK для Android и черновика релиза на GitHub.
 # Запуск: поставьте тег вида v0.9.0 и отправьте его (git push origin v0.9.0)
 # или нажмите «Run workflow» на вкладке Actions.
 # Версия берётся из src-tauri/tauri.conf.json, тег и название релиза: v<версия>.
@@ -55,10 +55,39 @@ jobs:
           releaseName: Frost v__VERSION__
           releaseBody: |
             Установщик для Windows 10 и 11 (x64): файл `Frost_*_x64-setup.exe` ниже.
+            Android 8.0 и новее (arm64 и armv7): файл `Frost_*_android.apk` ниже.
             Что нового: см. CHANGELOG.md в репозитории.
 
             Windows может показать предупреждение SmartScreen, потому что установщик не подписан:
             «Подробнее» → «Выполнить в любом случае».
+
+            Android: откройте APK на телефоне и разрешите установку из этого источника.
+            Обновления тоже ставятся поверх, данные сохраняются. Подробнее: docs/ANDROID.md.
           releaseDraft: true
           prerelease: false
           uploadWorkflowArtifacts: true
+
+  # APK для Android: тот же процесс, что и ручной запуск Android во вкладке Actions
+  android:
+    name: APK для Android
+    uses: ./.github/workflows/android.yml
+    secrets: inherit
+
+  # Подписанный APK прикрепляется к черновику, который создал шаг Windows.
+  # Без секретов подписи шаг пропускается: отладочный APK остаётся только в артефактах.
+  android-release:
+    name: APK в черновик релиза
+    needs: [windows, android]
+    if: needs.android.outputs.signed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.android.outputs.artifact }}
+          path: apk
+
+      - name: Прикрепить APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v${{ needs.android.outputs.version }}
+        run: gh release upload "$TAG" apk/*.apk --clobber --repo "$GITHUB_REPOSITORY"

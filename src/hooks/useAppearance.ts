@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { engine } from '../audio/engine';
+import { setSystemBars } from '../lib/android';
 import { extractAccent } from '../lib/color';
 import { applyScheme, hexToRgb, schemeFromSeed } from '../lib/material';
 import { applyLookAttributes } from '../lib/look';
+import { IS_ANDROID } from '../lib/platform';
 import { applyBackdrop, applyWindowTheme } from '../lib/window';
 import { usePlayer } from '../store/player';
 import { useSettings } from '../store/settings';
@@ -32,9 +34,10 @@ export function useAppearance() {
   const effective = useEffectiveTheme(theme);
 
   useEffect(() => {
-    const effect = reduce ? 'none' : backdrop;
+    // На Android прозрачного окна нет: фон всегда сплошной, из схемы Material You
+    const effect = reduce || IS_ANDROID ? 'none' : backdrop;
     document.documentElement.dataset.backdrop = effect;
-    void applyBackdrop(effect);
+    if (!IS_ANDROID) void applyBackdrop(effect);
   }, [backdrop, reduce]);
 
   useEffect(() => {
@@ -49,12 +52,17 @@ export function useAppearance() {
 
   useEffect(() => {
     // «Как в Windows»: окно следует системной теме, тогда и prefers-color-scheme в WebView честный.
-    void applyWindowTheme(theme === 'system' ? null : theme);
+    if (!IS_ANDROID) void applyWindowTheme(theme === 'system' ? null : theme);
   }, [theme]);
 
   useEffect(() => {
+    // Значки строки состояния и навигации: тёмные на светлой теме, светлые на тёмной
+    if (IS_ANDROID) setSystemBars(effective === 'light');
+  }, [effective]);
+
+  useEffect(() => {
     const root = document.documentElement;
-    const alpha = reduce ? 1 : Math.min(0.95, Math.max(0.15, surfaceOpacity));
+    const alpha = reduce || IS_ANDROID ? 1 : Math.min(0.95, Math.max(0.15, surfaceOpacity));
     root.style.setProperty('--surface-alpha', alpha.toFixed(2));
   }, [surfaceOpacity, reduce]);
 
