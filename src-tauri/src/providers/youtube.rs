@@ -619,6 +619,9 @@ mod enabled {
     }
 
     fn botguard_path(dir: &PathBuf) -> Option<PathBuf> {
+        if let Some(bundled) = crate::platform::bundled_botguard() {
+            return Some(bundled);
+        }
         let name = if cfg!(windows) { "rustypipe-botguard.exe" } else { "rustypipe-botguard" };
         dir.parent()
             .map(|parent| parent.join("bin").join(name))

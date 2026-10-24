@@ -67,6 +67,7 @@ impl AppState {
     }
 
     pub fn save_config(&self, cfg: AppConfig) -> AppResult<()> {
+        let cfg = cfg.for_platform();
         let old = self.config();
         let path = self.config_path.read().unwrap().clone();
         if let Some(path) = path {

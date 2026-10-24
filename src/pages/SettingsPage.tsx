@@ -31,6 +31,7 @@ import type {
 } from '../lib/types';
 import { DEFAULT_CONFIG } from '../lib/types';
 import { GITHUB_REPO, githubUrl, TELEGRAM_URL } from '../lib/links';
+import { IS_ANDROID } from '../lib/platform';
 import { isTauri, openExternal } from '../lib/window';
 import { APP_VERSION } from '../lib/version';
 import { TelegramIcon } from '../components/Telegram';
@@ -136,19 +137,21 @@ export function SettingsPage() {
       <AppearanceGroup />
       <LyricsGroup />
       <SoundGroup />
-      {isTauri && <WindowsGroup />}
+      {isTauri && !IS_ANDROID && <WindowsGroup />}
       <IntegrationsGroup />
       <DataGroup />
-      <Group icon={<Keyboard size={20} />} title="Горячие клавиши">
-        <div className="shortcuts">
-          {SHORTCUTS.map(([keys, action]) => (
-            <div key={keys} className="shortcuts__row">
-              <kbd>{keys}</kbd>
-              <span>{action}</span>
-            </div>
-          ))}
-        </div>
-      </Group>
+      {!IS_ANDROID && (
+        <Group icon={<Keyboard size={20} />} title="Горячие клавиши">
+          <div className="shortcuts">
+            {SHORTCUTS.map(([keys, action]) => (
+              <div key={keys} className="shortcuts__row">
+                <kbd>{keys}</kbd>
+                <span>{action}</span>
+              </div>
+            ))}
+          </div>
+        </Group>
+      )}
       <AboutGroup />
     </div>
   );
@@ -321,6 +324,59 @@ function YoutubeGroup() {
       : 'Нужен для движков «Авто» и «Только yt-dlp»: через него звук YouTube стабильнее всего. Около 18 МБ.';
   }
 
+  const regionRows = (
+    <>
+      <YoutubeCheck />
+
+      <Row label="Регион" description="Влияет на поиск, чарты и новинки YouTube Music">
+        <select className="select" value={config.region} onChange={(e) => void patchConfig({ region: e.target.value })}>
+          {REGIONS.map((c) => (
+            <option key={c} value={c}>
+              {countryName(c)}
+            </option>
+          ))}
+        </select>
+      </Row>
+      <Row label="Язык" description="Язык названий жанров, подборок и разделов">
+        <select className="select" value={config.language} onChange={(e) => void patchConfig({ language: e.target.value })}>
+          {LANGUAGES.map(([code, name]) => (
+            <option key={code} value={code}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </Row>
+    </>
+  );
+
+  if (IS_ANDROID) {
+    // На телефоне нет yt-dlp и Deno: звук только через RustyPipe, помощник botguard встроен в сборку
+    return (
+      <Group icon={<Cpu size={20} />} title="YouTube Music" subtitle="Звук через RustyPipe и регион выдачи">
+        <div className="tool-card">
+          <div className="tool-card__head">
+            <span className="tool-card__title">RustyPipe</span>
+            <span className={`status ${rustypipe ? 'status--ok' : ''}`}>
+              {rustypipe ? (
+                <>
+                  <Check size={14} /> встроен
+                </>
+              ) : (
+                'нет в этой сборке'
+              )}
+            </span>
+          </div>
+          <p className="tool-card__hint">
+            На Android звук YouTube идёт напрямую через RustyPipe: yt-dlp и Deno здесь не запускаются, ставить ничего не нужно.
+          </p>
+          <BotguardRow status={status} onStatus={setStatus} />
+        </div>
+        <AudioCacheCard />
+        {regionRows}
+      </Group>
+    );
+  }
+
   return (
     <Group icon={<Cpu size={20} />} title="YouTube Music" subtitle="Движок, yt-dlp и регион выдачи">
       <Row label="Движок воспроизведения" stacked>
@@ -398,26 +454,7 @@ function YoutubeGroup() {
       </div>
 
       <AudioCacheCard />
-      <YoutubeCheck />
-
-      <Row label="Регион" description="Влияет на поиск, чарты и новинки YouTube Music">
-        <select className="select" value={config.region} onChange={(e) => void patchConfig({ region: e.target.value })}>
-          {REGIONS.map((c) => (
-            <option key={c} value={c}>
-              {countryName(c)}
-            </option>
-          ))}
-        </select>
-      </Row>
-      <Row label="Язык" description="Язык названий жанров, подборок и разделов">
-        <select className="select" value={config.language} onChange={(e) => void patchConfig({ language: e.target.value })}>
-          {LANGUAGES.map(([code, name]) => (
-            <option key={code} value={code}>
-              {name}
-            </option>
-          ))}
-        </select>
-      </Row>
+      {regionRows}
     </Group>
   );
 }

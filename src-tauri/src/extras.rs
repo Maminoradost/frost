@@ -19,14 +19,16 @@ use crate::state::AppState;
 // ---------------------------------------------------------------------------
 
 /// Установщик скачивается только из релизов этого репозитория.
-const RELEASES_PREFIX: &str = "https://github.com/Maminoradost/frost/releases/download/";
+const RELEASES_PREFIX: &str = "https://github.com/Susanoooooooo/Frost/releases/download/";
 
 /// Скачивает установщик NSIS из релиза, запускает его в режиме обновления
 /// (`/P` — только полоса прогресса, `/UPDATE` — без лишних вопросов, `/R` — перезапуск Frost)
 /// и закрывает приложение, чтобы установщик мог заменить файлы.
 #[tauri::command]
 pub async fn update_install(app: AppHandle, state: State<'_, AppState>, url: String) -> AppResult<()> {
-    if !url.starts_with(RELEASES_PREFIX) || !url.ends_with("-setup.exe") {
+    // Windows получает установщик NSIS, Android: APK из того же релиза.
+    let suffix = if cfg!(target_os = "android") { ".apk" } else { "-setup.exe" };
+    if !url.starts_with(RELEASES_PREFIX) || !url.ends_with(suffix) {
         return Err(AppError::msg("Обновление можно скачать только из релизов Frost на GitHub"));
     }
     let name = url.rsplit('/').next().unwrap_or_default().to_string();
@@ -49,10 +51,31 @@ pub async fn update_install(app: AppHandle, state: State<'_, AppState>, url: Str
         return Err(AppError::msg("Файл обновления подозрительно маленький, установка отменена"));
     }
 
+    run_installer(&app, &name, &bytes)
+}
+
+/// Android: APK кладём в кэш приложения и отдаём системному установщику (FileProvider).
+#[cfg(target_os = "android")]
+fn run_installer(app: &AppHandle, name: &str, bytes: &[u8]) -> AppResult<()> {
+    use tauri_plugin_frost_mobile::FrostMobileExt;
+    let dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| AppError::msg(format!("Папка кэша недоступна: {e}")))?
+        .join("updates");
+    std::fs::create_dir_all(&dir)?;
+    let path = dir.join(name);
+    std::fs::write(&path, bytes)?;
+    app.frost_mobile().install_apk(&path).map_err(AppError::msg)
+}
+
+/// Windows: тихий установщик NSIS, после запуска Frost закрывается.
+#[cfg(not(target_os = "android"))]
+fn run_installer(app: &AppHandle, name: &str, bytes: &[u8]) -> AppResult<()> {
     let dir = std::env::temp_dir().join("frost-update");
     std::fs::create_dir_all(&dir)?;
-    let path = dir.join(&name);
-    std::fs::write(&path, &bytes)?;
+    let path = dir.join(name);
+    std::fs::write(&path, bytes)?;
 
     std::process::Command::new(&path)
         .args(["/P", "/UPDATE", "/R"])
@@ -444,6 +467,7 @@ pub fn app_quit(app: AppHandle) {
 // Мини-плеер
 // ---------------------------------------------------------------------------
 
+#[cfg_attr(mobile, allow(dead_code))]
 pub const MINI_LABEL: &str = "mini";
 
 /// Открывает мини-плеер или показывает уже открытый.
@@ -458,6 +482,16 @@ pub const MINI_LABEL: &str = "mini";
 /// Команда асинхронная: на Windows создание окна из синхронной команды блокирует цикл событий.
 #[tauri::command]
 pub async fn mini_open(app: AppHandle) -> AppResult<()> {
+    mini_open_impl(app).await
+}
+
+#[cfg(mobile)]
+async fn mini_open_impl(_app: AppHandle) -> AppResult<()> {
+    Err(AppError::msg("Мини-плеер есть только в версии для компьютера"))
+}
+
+#[cfg(desktop)]
+async fn mini_open_impl(app: AppHandle) -> AppResult<()> {
     if let Some(mini) = app.get_webview_window(MINI_LABEL) {
         let _ = mini.unminimize();
         let _ = mini.show();
@@ -509,6 +543,14 @@ pub async fn mini_open(app: AppHandle) -> AppResult<()> {
 /// Закрывает мини-плеер, если он открыт.
 #[tauri::command]
 pub fn mini_close(app: AppHandle) {
+    #[cfg(desktop)]
+    close_mini(&app);
+    #[cfg(mobile)]
+    let _ = app;
+}
+
+#[cfg(desktop)]
+fn close_mini(app: &AppHandle) {
     if let Some(mini) = app.get_webview_window(MINI_LABEL) {
         let _ = mini.close();
     }

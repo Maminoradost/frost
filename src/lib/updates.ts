@@ -6,6 +6,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { api } from './api';
 import { logEntry } from './diagnostics';
 import { GITHUB_REPO, githubUrl } from './links';
+import { IS_ANDROID } from './platform';
 import { isNewer } from './version';
 import { openExternal } from './window';
 import { toast } from '../store/ui';
@@ -33,12 +34,17 @@ async function ghLatest(repo: string): Promise<GhRelease | null> {
 export interface AppUpdate {
   version: string;
   page: string;
-  /** Прямая ссылка на установщик NSIS, если он есть в релизе. */
+  /** Прямая ссылка на установщик (NSIS на Windows, APK на Android), если он есть в релизе. */
   installer: string | null;
 }
 
-/** Установщик для Windows x64 среди файлов релиза. */
-export function pickInstaller(assets: GhAsset[] | undefined): string | null {
+/** Установщик для этой платформы среди файлов релиза: Windows x64 или Android (универсальный APK). */
+export function pickInstaller(assets: GhAsset[] | undefined, android = IS_ANDROID): string | null {
+  if (android) {
+    const apks = assets?.filter((a) => /\.apk$/i.test(a.name)) ?? [];
+    const apk = apks.find((a) => /android(-universal)?\.apk$/i.test(a.name)) ?? apks[0];
+    return apk?.browser_download_url ?? null;
+  }
   const setup = assets?.find((a) => /_x64-setup\.exe$/i.test(a.name));
   return setup?.browser_download_url ?? null;
 }
@@ -57,7 +63,10 @@ export async function findAppUpdate(): Promise<AppUpdate | null> {
 
 let installing = false;
 
-/** Скачивает установщик и запускает его; Frost закроется и откроется уже обновлённым. */
+/**
+ * Скачивает установщик и запускает его. Windows: Frost закроется и откроется уже обновлённым.
+ * Android: откроется системный установщик (один раз попросит разрешить установку из Frost).
+ */
 export async function installAppUpdate(update: AppUpdate) {
   if (!update.installer) {
     void openExternal(update.page);
@@ -65,9 +74,16 @@ export async function installAppUpdate(update: AppUpdate) {
   }
   if (installing) return;
   installing = true;
-  toast(`Скачиваю Frost ${update.version}. После установки он откроется сам`, 'info');
+  toast(
+    IS_ANDROID
+      ? `Скачиваю Frost ${update.version}. Затем Android предложит установить обновление`
+      : `Скачиваю Frost ${update.version}. После установки он откроется сам`,
+    'info',
+  );
   try {
     await invoke('update_install', { url: update.installer });
+    // На Android установщик открывается поверх Frost; если его закрыть, можно нажать «Обновить» ещё раз
+    if (IS_ANDROID) installing = false;
   } catch (e) {
     installing = false;
     logEntry('error', 'Обновление Frost:', e);

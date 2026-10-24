@@ -2,11 +2,11 @@
 
 # Frost
 
-**Музыкальный плеер для Windows 10 и 11**
+**Музыкальный плеер для Windows 10, 11 и Android**
 YouTube Music и SoundCloud без аккаунтов и ключей, тексты песен и оформление Material You.
 
-[![CI](https://github.com/Maminoradost/frost/actions/workflows/ci.yml/badge.svg)](https://github.com/Maminoradost/frost/actions/workflows/ci.yml)
-[![Релиз](https://img.shields.io/github/v/release/Maminoradost/frost?label=%D1%80%D0%B5%D0%BB%D0%B8%D0%B7)](https://github.com/Maminoradost/frost/releases/latest)
+[![CI](https://github.com/Susanoooooooo/Frost/actions/workflows/ci.yml/badge.svg)](https://github.com/Susanoooooooo/Frost/actions/workflows/ci.yml)
+[![Релиз](https://img.shields.io/github/v/release/Susanoooooooo/Frost?label=%D1%80%D0%B5%D0%BB%D0%B8%D0%B7)](https://github.com/Susanoooooooo/Frost/releases/latest)
 [![Лицензия: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![Telegram](https://img.shields.io/badge/Telegram-%D0%BA%D0%B0%D0%BD%D0%B0%D0%BB-2aabee?logo=telegram&logoColor=white)](https://t.me/+5N4FXvQT9C8wYjNi)
 
@@ -19,15 +19,26 @@ YouTube Music и SoundCloud без аккаунтов и ключей, текс�
 - **Тексты песен.** Синхронные из LRCLIB и YouTube Music, обычные из Genius. Источник можно переключить прямо в панели текста.
 - **Медиатека.** Избранное, плейлисты, очередь. Всё хранится локально.
 - **Звук.** Эквалайзер, визуализатор, медиаклавиши и плитка управления Windows (Media Session), горячие клавиши.
+- **Android.** Интерфейс для телефона, фоновое воспроизведение с управлением из уведомления и с экрана блокировки, своя музыка с телефона. Подробнее: [docs/ANDROID.md](docs/ANDROID.md).
 - **Мелочи, которые приятны.** Знакомство при первом запуске, таймер сна (15–90 минут или до конца трека), уведомление о новой версии, канал в Telegram.
 
 ## Установка
 
-1. Скачайте `Frost_<версия>_x64-setup.exe` со страницы [последнего релиза](https://github.com/Maminoradost/frost/releases/latest).
+### Windows
+
+1. Скачайте `Frost_<версия>_x64-setup.exe` со страницы [последнего релиза](https://github.com/Susanoooooooo/Frost/releases/latest).
 2. Запустите установщик. Установщик пока не подписан, поэтому Windows может показать SmartScreen: нажмите «Подробнее», затем «Выполнить в любом случае».
 3. Frost работает на WebView2. В Windows 11 он уже есть, в Windows 10 установщик скачает его сам.
 
 При первом запуске Frost в фоне скачает yt-dlp (около 18 МБ) с [официальной страницы проекта](https://github.com/yt-dlp/yt-dlp/releases): через него звук YouTube работает надёжнее всего. Движок YouTube можно сменить в настройках.
+
+### Android
+
+1. Скачайте `Frost_<версия>_android.apk` со страницы [последнего релиза](https://github.com/Susanoooooooo/Frost/releases/latest) прямо на телефон.
+2. Откройте файл и разрешите установку из этого источника. Нужен Android 8.0 или новее.
+3. Обновления Frost скачивает сам, а Android предлагает установить их поверх. Данные сохраняются.
+
+YouTube на Android работает через встроенный RustyPipe. Отличия от версии для Windows и сборка APK: [docs/ANDROID.md](docs/ANDROID.md).
 
 ## Горячие клавиши
 
@@ -57,7 +68,7 @@ YouTube Music и SoundCloud без аккаунтов и ключей, текс�
 - [Bun](https://bun.sh), если хотите запускать тесты.
 
 ```powershell
-git clone https://github.com/Maminoradost/frost.git
+git clone https://github.com/Susanoooooooo/Frost.git
 cd frost
 npm ci
 npm run tauri dev     # запуск в режиме разработки
@@ -72,6 +83,8 @@ npm test            # тесты (Bun)
 npm run check       # всё вместе
 ```
 
+Сборка APK для Android, локально или в GitHub Actions: [docs/ANDROID.md](docs/ANDROID.md).
+
 ## Как устроено
 
 ```
@@ -79,6 +92,7 @@ src/                интерфейс: React 19, TypeScript, Zustand, Vite
   audio/            звуковой движок (Web Audio), эквалайзер, Media Session
   components/       плеер, боковая панель, знакомство, таймер сна, тексты
   lib/              SoundCloud, Genius, тексты, Material You, версии
+  mobile/           интерфейс для телефона (Android)
   pages/            главная, поиск, артист, жанр, медиатека, плейлисты, настройки
   store/            состояние: плеер, медиатека, настройки, интерфейс, таймер сна
   styles/           токены Material You и стили
@@ -87,6 +101,10 @@ src-tauri/          ядро на Rust (Tauri 2)
   src/stream.rs     протокол frost://: прокси аудио с Range-запросами и HLS
   src/lyrics.rs     синхронные тексты из LRCLIB
   src/net.rs        сетевые запросы интерфейса по белому списку адресов
+  src/loopback.rs   локальный сервер звука на 127.0.0.1 для WebView на Android
+  plugins/          плагин Android на Kotlin: уведомление, фоновая служба, файлы, установка APK
+scripts/            донастройка проекта Android (android-setup.mjs)
+docs/               установка и сборка на Android
 tests/              тесты (bun test)
 ```
 
@@ -94,7 +112,7 @@ SoundCloud целиком работает в интерфейсе (`src/lib/sou
 
 ## Приватность
 
-Frost не собирает статистику и не требует аккаунтов. Медиатека и настройки хранятся на компьютере: в данных WebView2 и в `%APPDATA%\app.frost.player`. Запросы уходят только к источникам музыки и текстов (YouTube, SoundCloud, LRCLIB, Genius) и к GitHub: проверка обновлений и загрузка yt-dlp.
+Frost не собирает статистику и не требует аккаунтов. Медиатека и настройки хранятся на компьютере: в данных WebView2 и в `%APPDATA%\app.frost.player`. На Android всё лежит в личной папке приложения, недоступной другим программам. Запросы уходят только к источникам музыки и текстов (YouTube, SoundCloud, LRCLIB, Genius) и к GitHub: проверка обновлений и загрузка yt-dlp.
 
 ## Лицензия
 
@@ -104,7 +122,7 @@ Frost не собирает статистику и не требует акка
 
 ## Связь
 
-Новости и обсуждение: [канал в Telegram](https://t.me/+5N4FXvQT9C8wYjNi). Ошибки и идеи: [Issues](https://github.com/Maminoradost/frost/issues).
+Новости и обсуждение: [канал в Telegram](https://t.me/+5N4FXvQT9C8wYjNi). Ошибки и идеи: [Issues](https://github.com/Susanoooooooo/Frost/issues).
 
 ## Возможности 0.9.1
 

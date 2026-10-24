@@ -1,0 +1,6 @@
+{
+  "default": "frost-icon.svg",
+  "android_bg": "frost-background.svg",
+  "android_fg": "frost-foreground.svg",
+  "android_monochrome": "frost-monochrome.svg"
+}

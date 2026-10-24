@@ -1,11 +1,11 @@
 [package]
 name = "frost"
 version = "0.9.1"
-description = "Frost: музыкальный плеер для Windows (SoundCloud + YouTube Music) в стиле Material You"
+description = "Frost: музыкальный плеер для Windows и Android (SoundCloud + YouTube Music) в стиле Material You"
 authors = ["Frost contributors"]
 license = "GPL-3.0-or-later"
-repository = "https://github.com/Maminoradost/frost"
-homepage = "https://github.com/Maminoradost/frost"
+repository = "https://github.com/Susanoooooooo/Frost"
+homepage = "https://github.com/Susanoooooooo/Frost"
 edition = "2021"
 rust-version = "1.82"
 
@@ -26,19 +26,33 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["tray-icon", "protocol-asset"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2.8"
-tauri-plugin-global-shortcut = "2.4"
-tauri-plugin-autostart = "2.6"
-tauri-plugin-window-state = "2"
-tauri-plugin-single-instance = "2"
+# Нативная часть Android (уведомление плеера, кнопка «Назад», отступы, разрешения).
+# На десктопе плагин ничего не делает, но подключён всегда, чтобы права (ACL) были едиными.
+tauri-plugin-frost-mobile = { path = "plugins/frost-mobile" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-reqwest = { version = "0.12", features = ["json", "socks"] }
-tokio = { version = "1", features = ["sync", "time", "rt", "rt-multi-thread", "macros", "process"] }
+tokio = { version = "1", features = ["sync", "time", "rt", "rt-multi-thread", "macros", "process", "net", "io-util", "fs"] }
 http = "1"
 url = "2"
 base64 = "0.22"
 thiserror = "2"
+
+# Десктоп: системный TLS (schannel на Windows), окно, трей, хоткеи, автозапуск.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-global-shortcut = "2.4"
+tauri-plugin-autostart = "2.6"
+tauri-plugin-window-state = "2"
+tauri-plugin-single-instance = "2"
+reqwest = { version = "0.12", features = ["json", "socks"] }
 rustypipe = { version = "0.11", optional = true }
+
+# Android: rustls вместо OpenSSL (native-tls под Android не собирается без OpenSSL).
+[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["json", "socks", "rustls-tls", "charset", "http2"] }
+rustypipe = { version = "0.11", optional = true, default-features = false, features = ["rustls-tls-webpki-roots"] }
+# RustyPipe расшифровывает ссылки на потоки в QuickJS (rquickjs). Готовых биндингов для Android
+# в rquickjs-sys нет, поэтому они генерируются при сборке (нужен libclang, см. docs/ANDROID.md).
+rquickjs = { version = "0.9", features = ["bindgen"] }
 
 [profile.release]
 codegen-units = 1

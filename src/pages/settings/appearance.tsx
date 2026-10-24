@@ -4,6 +4,7 @@ import { Switch } from '../../components/Switch';
 import { useEffectiveTheme } from '../../hooks/useSystemTheme';
 import { clearAllOverrides, countOverrides } from '../../lib/lyricsStore';
 import { SCHEME_STYLES, SEED_PRESETS, schemeFromSeed, type ContrastLevel, type SchemeStyle } from '../../lib/material';
+import { IS_ANDROID, SYSTEM_THEME_LABEL } from '../../lib/platform';
 import type { BackdropEffect, ThemeMode } from '../../lib/types';
 import { useSettings, type SettingsValues } from '../../store/settings';
 import { toast, useUi } from '../../store/ui';
@@ -20,7 +21,7 @@ const BACKDROPS: { id: BackdropEffect; label: string; hint: string }[] = [
 const THEMES: [ThemeMode, string][] = [
   ['dark', 'Тёмная'],
   ['light', 'Светлая'],
-  ['system', 'Как в Windows'],
+  ['system', SYSTEM_THEME_LABEL],
 ];
 
 const CONTRASTS: [ContrastLevel, string][] = [
@@ -161,31 +162,36 @@ export function AppearanceGroup() {
         label="Компактный режим"
         description="Ниже строки треков, плотнее сетки и панели: больше помещается на экран"
       />
-      <Row label="Фон окна" description={current.hint} stacked>
-        <Segmented
-          label="Фон окна"
-          value={s.backdrop}
-          options={BACKDROPS.map((b) => [b.id, b.label] as [BackdropEffect, string])}
-          onChange={(v) => s.update({ backdrop: v })}
-        />
-      </Row>
-      <Row label="Плотность панелей" description="Насколько сквозь интерфейс виден рабочий стол">
-        <span className="range-field">
-          <input
-            type="range"
-            className="range"
-            min={15}
-            max={95}
-            step={5}
-            value={opacity}
-            disabled={s.reduceTransparency || s.backdrop === 'none'}
-            onChange={(e) => s.update({ surfaceOpacity: Number(e.target.value) / 100 })}
-            style={{ '--fill': `${((opacity - 15) / 80) * 100}%` } as CSSProperties}
-            aria-label="Плотность панелей"
-          />
-          <span className="range-field__value">{opacity}%</span>
-        </span>
-      </Row>
+      {/* На Android окно всегда непрозрачное: эффекты Windows и плотность стекла не нужны */}
+      {!IS_ANDROID && (
+        <>
+          <Row label="Фон окна" description={current.hint} stacked>
+            <Segmented
+              label="Фон окна"
+              value={s.backdrop}
+              options={BACKDROPS.map((b) => [b.id, b.label] as [BackdropEffect, string])}
+              onChange={(v) => s.update({ backdrop: v })}
+            />
+          </Row>
+          <Row label="Плотность панелей" description="Насколько сквозь интерфейс виден рабочий стол">
+            <span className="range-field">
+              <input
+                type="range"
+                className="range"
+                min={15}
+                max={95}
+                step={5}
+                value={opacity}
+                disabled={s.reduceTransparency || s.backdrop === 'none'}
+                onChange={(e) => s.update({ surfaceOpacity: Number(e.target.value) / 100 })}
+                style={{ '--fill': `${((opacity - 15) / 80) * 100}%` } as CSSProperties}
+                aria-label="Плотность панелей"
+              />
+              <span className="range-field__value">{opacity}%</span>
+            </span>
+          </Row>
+        </>
+      )}
       <Switch
         checked={s.reduceTransparency}
         onChange={(v) => s.update({ reduceTransparency: v })}

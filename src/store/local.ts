@@ -5,8 +5,10 @@
  */
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { create } from 'zustand';
+import { pickFolder, requestAudioPermission } from '../lib/android';
 import { idbGet, idbSet } from '../lib/idb';
 import { md5 } from '../lib/md5';
+import { IS_ANDROID, localMediaUrl } from '../lib/platform';
 import { readTags, tagsFromFileName, type AudioTags } from '../lib/tags';
 import type { Track } from '../lib/types';
 import { isTauri } from '../lib/window';
@@ -206,10 +208,33 @@ async function saveCover(key: string, picture: AudioTags['picture'] | undefined,
   }
 }
 
+/** Windows: стандартный диалог, можно выбрать несколько папок сразу. */
+async function pickDesktopFolders(): Promise<string[]> {
+  const { open } = await import('@tauri-apps/plugin-dialog');
+  const picked = await open({ directory: true, multiple: true, title: 'Папки с музыкой' }).catch(() => null);
+  return (Array.isArray(picked) ? picked : picked ? [picked] : []).filter(Boolean) as string[];
+}
+
+/** Android: разрешение на аудиофайлы, затем системный выбор папки (по одной). */
+async function pickAndroidFolder(): Promise<string[]> {
+  if (!(await requestAudioPermission())) {
+    toast('Без доступа к аудиофайлам Frost не увидит музыку на телефоне. Разрешение можно выдать в настройках Android', 'error');
+    return [];
+  }
+  const picked = await pickFolder().catch(() => null);
+  if (!picked) return [];
+  if (!picked.path) {
+    toast('Эта папка не на памяти телефона или карте. Выберите папку во внутренней памяти или на SD-карте', 'error');
+    return [];
+  }
+  return [picked.path];
+}
+
 async function readEntry(f: LocalFile, covers: Map<string, Promise<string | null>>): Promise<LocalEntry> {
   let tags: AudioTags = {};
   try {
-    const url = convertFileSrc(f.path);
+    // На Android файлы отдаёт локальный сервер: свой протокол WebView там портит запросы Range
+    const url = localMediaUrl(f.path);
     tags = await readTags((start, length) => readRange(url, start, length, f.size), f.size);
   } catch (e) {
     console.warn('Теги не прочитались', f.path, e);
@@ -312,9 +337,7 @@ export const useLocal = create<LocalState>()((set, get) => ({
 
   addFolder: async () => {
     if (!isTauri) return;
-    const { open } = await import('@tauri-apps/plugin-dialog');
-    const picked = await open({ directory: true, multiple: true, title: 'Папки с музыкой' }).catch(() => null);
-    const list = (Array.isArray(picked) ? picked : picked ? [picked] : []).filter(Boolean) as string[];
+    const list = IS_ANDROID ? await pickAndroidFolder() : await pickDesktopFolders();
     if (!list.length) return;
     const s = useSettings.getState();
     const folders = [...s.localFolders];

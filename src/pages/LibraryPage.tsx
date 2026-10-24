@@ -1,4 +1,4 @@
-import { Clock, FileUp, Heart, Plus, Users } from 'lucide-react';
+import { BarChart3, Clock, FileUp, HardDrive, Heart, Plus, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ImportPanel } from '../components/ImportPanel';
 import { MediaCard } from '../components/MediaCard';
@@ -7,6 +7,7 @@ import { promptCreatePlaylist } from '../components/Sidebar';
 import { EmptyState } from '../components/States';
 import { TrackList } from '../components/TrackList';
 import { timeAgo, tracksLabel } from '../lib/format';
+import { DEVICE_FILES_LABEL, IS_ANDROID } from '../lib/platform';
 import { providerMeta } from '../lib/providers';
 import { useLibrary } from '../store/library';
 import { usePlayer } from '../store/player';
@@ -47,6 +48,27 @@ export function LibraryPage({ tab }: { tab: LibraryTab }) {
           </button>
         )}
       </div>
+      {IS_ANDROID && (
+        // На телефоне нет боковой панели: сюда переезжают её разделы «Моя музыка»
+        <div className="m-shortcuts">
+          <button className="m-shortcut" onClick={() => navigate({ name: 'liked' })}>
+            <Heart size={20} />
+            <span>Любимые</span>
+          </button>
+          <button className="m-shortcut" onClick={() => navigate({ name: 'local' })}>
+            <HardDrive size={20} />
+            <span>{DEVICE_FILES_LABEL}</span>
+          </button>
+          <button className="m-shortcut" onClick={() => navigate({ name: 'wrapped' })}>
+            <BarChart3 size={20} />
+            <span>Итоги</span>
+          </button>
+          <button className="m-shortcut" onClick={() => promptCreatePlaylist()}>
+            <Plus size={20} />
+            <span>Новый плейлист</span>
+          </button>
+        </div>
+      )}
       <div className="tabs" role="tablist">
         {TABS.map(([id, label]) => (
           <button

@@ -1,0 +1,23 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "android",
+  "description": "Права Frost на Android: без окон, трея и глобальных клавиш, плюс нативная часть frost-mobile",
+  "platforms": [
+    "android"
+  ],
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:event:allow-emit",
+    "core:event:allow-emit-to",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:app:allow-default-window-icon",
+    "opener:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "frost-mobile:default"
+  ]
+}

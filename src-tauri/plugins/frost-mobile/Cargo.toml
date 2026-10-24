@@ -1,0 +1,17 @@
+[package]
+name = "tauri-plugin-frost-mobile"
+version = "0.1.0"
+description = "Нативная часть Frost для Android: уведомление плеера, MediaSession, «Назад», отступы, разрешения, установка APK"
+edition = "2021"
+rust-version = "1.82"
+license = "GPL-3.0-or-later"
+publish = false
+# По `links` tauri-build находит Android-модуль и права (ACL) плагина.
+links = "tauri-plugin-frost-mobile"
+
+[dependencies]
+tauri = "2"
+serde_json = "1"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

@@ -7,11 +7,13 @@ import { Database, Download, ExternalLink, Monitor, Plug, RotateCcw, Trash2, X }
 import { useEffect, useRef, useState } from 'react';
 import { Switch } from '../../components/Switch';
 import { accelFromEvent, accelLabel } from '../../lib/accelerator';
+import { saveDocument } from '../../lib/android';
 import { DEFAULT_GLOBAL_KEYS, GLOBAL_ACTIONS, getAutostart, openMiniPlayer, setAutostart, type GlobalAction } from '../../lib/desktop';
 import { buildReport } from '../../lib/diagnostics';
 import { clearJournal, exportJournal, importJournal, journalSize } from '../../lib/journal';
 import { DISCORD_APP_ID, LISTENBRAINZ_SETTINGS, newIssueUrl } from '../../lib/links';
 import { lastfmAuthUrl, lastfmAvailable, lastfmGetSession, lastfmGetToken, listenbrainzValidate, loadQueue } from '../../lib/scrobble';
+import { IS_ANDROID } from '../../lib/platform';
 import { flushScrobbles } from '../../lib/scrobbler';
 import { findAppUpdate, installAppUpdate, type AppUpdate } from '../../lib/updates';
 import { APP_VERSION } from '../../lib/version';
@@ -184,29 +186,34 @@ export function SoundExtras() {
         label="Выравнивать громкость"
         description="Тихие и громкие треки звучат ровнее. Работает мягкий компрессор, качество не страдает."
       />
-      <Row
-        label="Устройство вывода"
-        description={
-          named.length
-            ? 'Если устройство отключить, звук вернётся в устройство Windows по умолчанию.'
-            : 'Чтобы показать названия устройств, движок Windows один раз спросит доступ к микрофону. Сам микрофон не используется.'
-        }
-      >
-        {named.length ? (
-          <select className="input select" value={outputDevice} onChange={(e) => update({ outputDevice: e.target.value })} aria-label="Устройство вывода">
-            <option value="">Как в Windows</option>
-            {named.map((d) => (
-              <option key={d.deviceId} value={d.deviceId}>
-                {d.label}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <button className="btn btn--ghost btn--sm" onClick={() => void loadDevices(true)}>
-            Показать устройства
-          </button>
-        )}
-      </Row>
+      {/* На Android звук идёт туда, куда направит система: динамик, наушники, Bluetooth */}
+      {!IS_ANDROID && (
+        <>
+          <Row
+            label="Устройство вывода"
+            description={
+              named.length
+                ? 'Если устройство отключить, звук вернётся в устройство Windows по умолчанию.'
+                : 'Чтобы показать названия устройств, движок Windows один раз спросит доступ к микрофону. Сам микрофон не используется.'
+            }
+          >
+            {named.length ? (
+              <select className="input select" value={outputDevice} onChange={(e) => update({ outputDevice: e.target.value })} aria-label="Устройство вывода">
+                <option value="">Как в Windows</option>
+                {named.map((d) => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <button className="btn btn--ghost btn--sm" onClick={() => void loadDevices(true)}>
+                Показать устройства
+              </button>
+            )}
+          </Row>
+        </>
+      )}
       <Row label="Свои пресеты эквалайзера" description="Сохраните текущие полосы под своим именем." stacked>
         <div className="chip-row">
           {Object.keys(eqCustom).map((name) => (
@@ -293,31 +300,36 @@ export function IntegrationsGroup() {
   };
 
   return (
-    <Group icon={<Plug size={18} />} title="Интеграции" subtitle="Discord и учёт прослушиваний в ListenBrainz и Last.fm">
-      <Switch
-        checked={s.discordEnabled}
-        onChange={(v) => s.update({ discordEnabled: v })}
-        label="Показывать в Discord, что играет"
-        description="Статус «Слушает» с названием, обложкой и временем. Нужен запущенный Discord на этом компьютере."
-      />
-      {s.discordEnabled && (
-        <Row
-          label={builtInDiscord ? 'Своё приложение Discord' : 'Application ID'}
-          description={
-            builtInDiscord
-              ? 'Необязательно. Оставьте пустым, чтобы использовать приложение Frost.'
-              : 'Создайте приложение на discord.com/developers (имя приложения будет видно в статусе) и вставьте его Application ID.'
-          }
-        >
-          <input
-            className="input input--sm"
-            value={s.discordAppId}
-            onChange={(e) => s.update({ discordAppId: e.target.value.replace(/\D/g, '') })}
-            placeholder="123456789012345678"
-            inputMode="numeric"
-            aria-label="Discord Application ID"
+    <Group icon={<Plug size={18} />} title="Интеграции" subtitle={IS_ANDROID ? 'Учёт прослушиваний в ListenBrainz и Last.fm' : 'Discord и учёт прослушиваний в ListenBrainz и Last.fm'}>
+      {/* Discord RPC работает только с Discord на компьютере */}
+      {!IS_ANDROID && (
+        <>
+          <Switch
+            checked={s.discordEnabled}
+            onChange={(v) => s.update({ discordEnabled: v })}
+            label="Показывать в Discord, что играет"
+            description="Статус «Слушает» с названием, обложкой и временем. Нужен запущенный Discord на этом компьютере."
           />
-        </Row>
+          {s.discordEnabled && (
+            <Row
+              label={builtInDiscord ? 'Своё приложение Discord' : 'Application ID'}
+              description={
+                builtInDiscord
+                  ? 'Необязательно. Оставьте пустым, чтобы использовать приложение Frost.'
+                  : 'Создайте приложение на discord.com/developers (имя приложения будет видно в статусе) и вставьте его Application ID.'
+              }
+            >
+              <input
+                className="input input--sm"
+                value={s.discordAppId}
+                onChange={(e) => s.update({ discordAppId: e.target.value.replace(/\D/g, '') })}
+                placeholder="123456789012345678"
+                inputMode="numeric"
+                aria-label="Discord Application ID"
+              />
+            </Row>
+          )}
+        </>
       )}
 
       <Row
@@ -436,10 +448,17 @@ export function DataGroup() {
         library: plainState(useLibrary.getState()),
         journal: await exportJournal(),
       };
+      const fileName = `frost-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      if (IS_ANDROID) {
+        // Диалог Android отдаёт не путь, а адрес документа: записывает сам плагин
+        if (!(await saveDocument(fileName, JSON.stringify(backup)))) return;
+        toast('Резервная копия сохранена', 'success');
+        return;
+      }
       const { save: pick } = await import('@tauri-apps/plugin-dialog');
       const path = await pick({
         title: 'Резервная копия Frost',
-        defaultPath: `frost-backup-${new Date().toISOString().slice(0, 10)}.json`,
+        defaultPath: fileName,
         filters: [{ name: 'Резервная копия', extensions: ['json'] }],
       });
       if (!path) return;

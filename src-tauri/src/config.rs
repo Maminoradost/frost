@@ -74,6 +74,23 @@ impl AppConfig {
             .ok()
             .and_then(|text| serde_json::from_str::<AppConfig>(&text).ok())
             .unwrap_or_default()
+            .for_platform()
+    }
+
+    /// Поправки под платформу. На Android нет yt-dlp: звук YouTube только через RustyPipe,
+    /// иначе «Авто» и «Только yt-dlp» советовали бы поставить программу, которую не запустить.
+    pub fn for_platform(self) -> Self {
+        #[cfg(target_os = "android")]
+        {
+            let mut cfg = self;
+            cfg.yt_engine = YtEngine::Rustypipe;
+            cfg.ytdlp_path.clear();
+            cfg
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            self
+        }
     }
 
     pub fn save(&self, path: &Path) -> std::io::Result<()> {

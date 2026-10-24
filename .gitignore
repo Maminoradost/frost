@@ -4,3 +4,6 @@ src-tauri/target
 src-tauri/gen
 *.log
 .DS_Store
+# Ключи подписи Android (см. docs/ANDROID.md)
+*.jks
+*.keystore

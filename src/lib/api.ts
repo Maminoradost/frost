@@ -2,7 +2,7 @@
  * Единая точка доступа к источникам.
  * SoundCloud: TS-клиент веб-API (`soundcloud.ts`), YouTube Music: команды Rust-ядра.
  */
-import { convertFileSrc, invoke } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core';
 import * as sc from './soundcloud';
 import { bestMatch, searchQuery } from './match';
 import type {
@@ -28,6 +28,7 @@ import type {
   AudioCacheInfo,
 } from './types';
 import { isSourceProvider } from './types';
+import { localMediaUrl } from './platform';
 
 function unsupported(provider: Provider): never {
   throw new Error(`Источник «${provider}» больше не поддерживается: трек будет найден заново в SoundCloud или YouTube Music`);
@@ -189,7 +190,7 @@ export const api = {
   ): Promise<{ stream: ResolvedStream; via: Track | null }> => {
     // Файлы с компьютера играют напрямую через протокол asset
     if (track.provider === 'local') {
-      return { stream: { url: convertFileSrc(track.id), kind: 'progressive', preview: false }, via: null };
+      return { stream: { url: localMediaUrl(track.id), kind: 'progressive', preview: false }, via: null };
     }
     let firstError: unknown = null;
     let preview: ResolvedStream | null = null;

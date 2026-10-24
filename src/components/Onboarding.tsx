@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { SEED_PRESETS } from '../lib/material';
+import { IS_ANDROID } from '../lib/platform';
 import { useSettings } from '../store/settings';
 import { useUi } from '../store/ui';
 import { Logo } from './Logo';
@@ -19,7 +20,7 @@ interface Step {
   placement?: 'right' | 'top' | 'bottom';
 }
 
-const STEPS: Step[] = [
+const DESKTOP_STEPS: Step[] = [
   {
     title: 'Добро пожаловать во Frost',
     text: 'Музыка из YouTube Music и SoundCloud без регистрации, ключей и рекламы. Покажу, где что находится: это займёт полминуты.',
@@ -62,6 +63,38 @@ const STEPS: Step[] = [
   },
   { title: 'Всё готово!', text: 'Выберите цвет интерфейса. Когда заиграет музыка, палитра подстроится под обложку.' },
 ];
+
+/** На телефоне подсказки указывают на нижнюю панель навигации. */
+const MOBILE_STEPS: Step[] = [
+  {
+    title: 'Добро пожаловать во Frost',
+    text: 'Музыка из YouTube Music и SoundCloud без регистрации, ключей и рекламы. Покажу, где что находится: это займёт полминуты.',
+  },
+  {
+    target: 'search',
+    title: 'Поиск',
+    text: 'Треки, артисты и альбомы сразу в YouTube Music и SoundCloud. Сюда же можно вставить ссылку на трек или плейлист.',
+    placement: 'top',
+  },
+  {
+    target: 'library',
+    title: 'Ваша музыка',
+    text: 'Любимые треки, история, плейлисты и музыка с телефона. Всё хранится на устройстве, аккаунт не нужен.',
+    placement: 'top',
+  },
+  {
+    target: 'settings',
+    title: 'Настройки',
+    text: 'Оформление Material You, эквалайзер, источники и сеть. Там же можно пройти это знакомство ещё раз.',
+    placement: 'top',
+  },
+  {
+    title: 'Всё готово!',
+    text: 'Выберите цвет интерфейса. Плеер появится внизу, когда заиграет музыка: коснитесь его, чтобы открыть тексты и очередь.',
+  },
+];
+
+const STEPS = IS_ANDROID ? MOBILE_STEPS : DESKTOP_STEPS;
 
 interface Rect {
   top: number;

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Spinner } from '../../components/States';
 import { Switch } from '../../components/Switch';
 import { api, errorText } from '../../lib/api';
+import { IS_ANDROID } from '../../lib/platform';
 import type { AudioCacheInfo, YtdlpStatus } from '../../lib/types';
 import { DEFAULT_CONFIG } from '../../lib/types';
 import { usePlayer } from '../../store/player';
@@ -14,6 +15,28 @@ import { Row } from './ui';
 export function BotguardRow({ status, onStatus }: { status: YtdlpStatus | null; onStatus: (s: YtdlpStatus) => void }) {
   const [busy, setBusy] = useState(false);
   if (status && !status.rustypipe) return null;
+  if (IS_ANDROID) {
+    // На Android помощник приезжает внутри APK (если сборка его включила): ставить и удалять нечего
+    return (
+      <>
+        <div className="tool-card__head">
+          <span className="tool-card__title">Помощник RustyPipe</span>
+          {status?.botguard ? (
+            <span className="status status--ok">
+              <Check size={14} /> встроен
+            </span>
+          ) : (
+            <span className="status">нет в этой сборке</span>
+          )}
+        </div>
+        <p className="tool-card__hint">
+          {status?.botguard
+            ? 'rustypipe-botguard проходит проверку YouTube и выдаёт PO-токены: с ними YouTube отдаёт трек целиком.'
+            : 'Без него RustyPipe берёт звук через другие клиенты YouTube. Изредка трек может не запуститься: тогда помогает повтор.'}
+        </p>
+      </>
+    );
+  }
   const run = async (remove: boolean) => {
     setBusy(true);
     try {
