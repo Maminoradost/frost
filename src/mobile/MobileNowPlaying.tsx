@@ -85,7 +85,7 @@ export function MobileNowPlaying() {
   return (
     <div ref={sheet} className={`m-np ${isPlaying ? 'is-playing' : ''}`} role="dialog" aria-modal="true" aria-label="Сейчас играет">
       <div className="m-np__bg" aria-hidden>
-        {(track.artwork ?? track.artworkSmall) && <img key={track.artwork ?? track.artworkSmall} src={track.artwork ?? track.artworkSmall} alt="" />}
+        {(track.artwork ?? track.artworkSmall) && <img key={track.artwork ?? track.artworkSmall} src={track.artwork ?? track.artworkSmall ?? undefined} alt="" />}
       </div>
 
       <header className="m-np__top" {...dragHandlers}>
