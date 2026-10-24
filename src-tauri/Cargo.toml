@@ -34,7 +34,7 @@ serde_json = "1"
 tokio = { version = "1", features = ["sync", "time", "rt", "rt-multi-thread", "macros", "process", "net", "io-util", "fs"] }
 http = "1"
 url = "2"
-base64 = "0.22"
+base64 = "0.23"
 thiserror = "2"
 
 # Десктоп: системный TLS (schannel на Windows), окно, трей, хоткеи, автозапуск.
