@@ -123,7 +123,7 @@ export function MobileNowPlaying() {
               swipe.onPointerCancel();
             }}
           >
-            <Artwork key={trackKey(track)} src={track.artwork ?? track.artworkSmall} radius={28} className="m-np__art" />
+            <Artwork key={trackKey(track)} src={track.artwork ?? track.artworkSmall ?? undefined} radius={28} className="m-np__art" />
           </div>
         ) : (
           <div className="m-np__panel">
