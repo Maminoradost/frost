@@ -1,6 +1,7 @@
 import { Heart, LoaderCircle, Pause, Play, SkipForward } from 'lucide-react';
 import { Artwork } from '../components/Artwork';
 import { usePlaybackTime } from '../hooks/usePlaybackTime';
+import { haptic } from '../lib/android';
 import { trackKey } from '../lib/types';
 import { useLibrary } from '../store/library';
 import { usePlayer } from '../store/player';
@@ -17,8 +18,14 @@ export function MiniPlayer() {
   const liked = useLibrary((s) => (track ? !!s.likedKeys[trackKey(track)] : false));
   const time = usePlaybackTime(!!track && !nowPlaying, 4);
   const swipe = useSwipe(
-    () => void usePlayer.getState().next(),
-    () => void usePlayer.getState().prev(),
+    () => {
+      haptic('tick');
+      void usePlayer.getState().next();
+    },
+    () => {
+      haptic('tick');
+      void usePlayer.getState().prev();
+    },
   );
 
   if (!track) return null;

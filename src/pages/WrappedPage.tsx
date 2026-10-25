@@ -4,6 +4,7 @@ import { Artwork } from '../components/Artwork';
 import { EmptyState, Spinner } from '../components/States';
 import { plural } from '../lib/format';
 import { loadJournal, type JournalData } from '../lib/journal';
+import { IS_ANDROID } from '../lib/platform';
 import { computeWrapped, listenerType, periodRange, type WrappedPeriod } from '../lib/wrapped';
 import { useLibrary } from '../store/library';
 import { usePlayer } from '../store/player';
@@ -92,7 +93,7 @@ export function WrappedPage() {
       <div className="page-head">
         <div>
           <h1 className="page-title">Итоги</h1>
-          <div className="page-subtitle">Считаются только реально прозвучавшие минуты. Данные хранятся на этом компьютере.</div>
+          <div className="page-subtitle">Считаются только реально прозвучавшие минуты. Данные хранятся на этом {IS_ANDROID ? 'телефоне' : 'компьютере'}.</div>
         </div>
       </div>
 

@@ -22,6 +22,9 @@ on:
       artifact:
         description: Имя артефакта с APK
         value: ${{ jobs.apk.outputs.artifact }}
+      cert_sha256:
+        description: SHA-256 сертификата, которым подписан APK
+        value: ${{ jobs.apk.outputs.cert_sha256 }}
 
 permissions:
   contents: read
@@ -40,6 +43,7 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
       signed: ${{ steps.sign.outputs.signed }}
       artifact: ${{ steps.meta.outputs.artifact }}
+      cert_sha256: ${{ steps.apk.outputs.cert_sha256 }}
     steps:
       - uses: actions/checkout@v7
 
@@ -62,6 +66,12 @@ jobs:
           version=$(node -p "require('./src-tauri/tauri.conf.json').version")
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "artifact=frost-android-$version" >> "$GITHUB_OUTPUT"
+
+      # До долгой сборки: если версии пары крейт ↔ npm-пакет Tauri разошлись, сборка APK
+      # всё равно упадёт через полчаса, а здесь это видно за секунды
+      - name: Версии Tauri (Rust ↔ npm)
+        working-directory: ${{ steps.app.outputs.dir }}
+        run: node scripts/check-tauri-versions.mjs
 
       - uses: actions/setup-node@v7
         with:
@@ -153,12 +163,16 @@ jobs:
         working-directory: ${{ steps.app.outputs.dir }}
         run: npm run tauri -- android build --apk --target aarch64 armv7 --ci
 
+      # В сводке запуска: каким ключом подписан APK и отпечаток сертификата. Android ставит
+      # обновление поверх установленной версии, только если сертификат тот же. Если в
+      # переменных репозитория задан ANDROID_CERT_SHA256, подписанная сборка сверяется с ним.
       - name: Подпись и имя файла
         id: apk
         working-directory: ${{ steps.app.outputs.dir }}
         env:
           VERSION: ${{ steps.meta.outputs.version }}
           SIGNED: ${{ steps.sign.outputs.signed }}
+          EXPECTED_CERT: ${{ vars.ANDROID_CERT_SHA256 }}
         run: |
           out=src-tauri/gen/android/app/build/outputs/apk/universal/release
           ls -la "$out"
@@ -180,9 +194,48 @@ jobs:
               --ks-key-alias frost-debug --out "$dest" "$RUNNER_TEMP/aligned.apk"
           fi
           bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          "$bt/apksigner" verify --print-certs "$dest" | head -5
+          certs=$("$bt/apksigner" verify --print-certs "$dest")
+          printf '%s\n' "$certs" | head -5
           ls -la dist-android
           echo "path=$dest" >> "$GITHUB_OUTPUT"
+
+          norm() { printf '%s' "$1" | tr -d ': \t\r\n' | tr 'A-F' 'a-f'; }
+          cert=$(norm "$(printf '%s\n' "$certs" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)")
+          subject=$(printf '%s\n' "$certs" | sed -n 's/^Signer #1 certificate DN: //p' | head -1)
+          echo "cert_sha256=$cert" >> "$GITHUB_OUTPUT"
+          expected=$(norm "$EXPECTED_CERT")
+          if [ "$SIGNED" = "true" ]; then
+            if [ -z "$expected" ]; then
+              key="релизный ключ из секретов"
+              check="переменная ANDROID_CERT_SHA256 не задана: сохраните отпечаток выше в переменных репозитория, и следующие сборки будут сверяться с ним"
+            elif [ "$cert" = "$expected" ]; then
+              key="релизный ключ из секретов"
+              check="✅ совпадает с ANDROID_CERT_SHA256"
+            else
+              key="**ключ из секретов, но не тот, что раньше**"
+              check="❌ не совпадает с ANDROID_CERT_SHA256 ($expected)"
+            fi
+          else
+            key="**временный отладочный ключ**: установится только начисто, поверх релизной версии не встанет"
+            check="не проверялось (нет секретов подписи)"
+          fi
+          {
+            echo "### APK для Android $VERSION"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Файл | \`$(basename "$dest")\`, $(du -h "$dest" | cut -f1) |"
+            echo "| Подпись | $key |"
+            echo "| Сертификат | $subject |"
+            echo "| SHA-256 сертификата | \`$cert\` |"
+            echo "| Сверка | $check |"
+            echo "| SHA-256 файла | \`$(sha256sum "$dest" | cut -d' ' -f1)\` |"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$SIGNED" = "true" ] && [ -n "$expected" ] && [ "$cert" != "$expected" ]; then
+            echo "::error title=Ключ подписи::APK подписан другим сертификатом ($cert), ожидался $expected. Такое обновление не встанет поверх установленного Frost: проверьте секрет ANDROID_KEYSTORE_BASE64"
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v7
         with:

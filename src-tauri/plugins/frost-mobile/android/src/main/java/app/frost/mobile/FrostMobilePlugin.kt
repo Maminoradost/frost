@@ -8,6 +8,8 @@ import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.Settings
+import android.speech.RecognizerIntent
+import android.view.HapticFeedbackConstants
 import android.view.WindowManager
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
@@ -80,9 +82,22 @@ class SaveDocumentArgs {
         Permission(strings = [Manifest.permission.READ_EXTERNAL_STORAGE], alias = "storage"),
     ],
 )
+@InvokeArg
+class HapticArgs {
+    var kind: String? = null
+}
+
+@InvokeArg
+class VoiceArgs {
+    var prompt: String? = null
+}
+
 class FrostMobilePlugin(private val activity: Activity) : Plugin(activity) {
     private var webView: WebView? = null
     private var insets = JSObject()
+
+    /** Ссылка, с которой открыли Frost («Поделиться» или переход по ссылке), пока её не забрал фронтенд. */
+    private var pendingLink: String? = null
 
     /** «Назад» решает фронтенд: закрыть шторку, вернуться по истории или свернуть приложение. */
     private val backCallback = object : OnBackPressedCallback(true) {
@@ -101,6 +116,7 @@ class FrostMobilePlugin(private val activity: Activity) : Plugin(activity) {
     override fun load(webView: WebView) {
         super.load(webView)
         this.webView = webView
+        pendingLink = linkFrom(activity.intent)
         FrostPlayback.listener = { action, position ->
             val payload = JSObject()
             payload.put("action", action)
@@ -283,6 +299,100 @@ class FrostMobilePlugin(private val activity: Activity) : Plugin(activity) {
             "/storage/$volume"
         }
         return if (relative.isEmpty()) base else "$base/$relative"
+    }
+
+    // ---------- Ссылки, вибрация, голосовой поиск ----------
+
+    /**
+     * Текст ссылки из интента: переход по ссылке (VIEW) или «Поделиться» (SEND, text/plain).
+     * Что это за ссылка, разбирает фронтенд (src/lib/shareLinks.ts).
+     */
+    private fun linkFrom(intent: Intent?): String? {
+        if (intent == null) return null
+        // Запуск из списка недавних повторяет старый интент: ссылку уже открывали
+        if ((intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) return null
+        val text = when (intent.action) {
+            Intent.ACTION_VIEW -> intent.dataString
+            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)
+            else -> null
+        }
+        return text?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
+    /** Frost уже открыт (launchMode singleTask), а пользователь поделился ещё одной ссылкой. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val link = linkFrom(intent) ?: return
+        if (hasListener("link")) {
+            val payload = JSObject()
+            payload.put("url", link)
+            trigger("link", payload)
+        } else {
+            pendingLink = link
+        }
+    }
+
+    /** Ссылка, с которой запустили Frost. Отдаётся один раз. */
+    @Command
+    fun takeLink(invoke: Invoke) {
+        val response = JSObject()
+        pendingLink?.let { response.put("url", it) }
+        pendingLink = null
+        invoke.resolve(response)
+    }
+
+    /** Короткий отклик вибромотора, как у системных кнопок. Разрешение VIBRATE не нужно. */
+    @Command
+    fun haptic(invoke: Invoke) {
+        val args = invoke.parseArgs(HapticArgs::class.java)
+        val constant = when (args.kind) {
+            "tick" -> HapticFeedbackConstants.CLOCK_TICK
+            "confirm" -> if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.VIRTUAL_KEY
+            else -> HapticFeedbackConstants.LONG_PRESS
+        }
+        activity.runOnUiThread {
+            (webView ?: activity.window.decorView).performHapticFeedback(constant)
+        }
+        invoke.resolve()
+    }
+
+    /**
+     * Android 12+: основной цвет системной палитры, которую Android строит из обоев (Material You).
+     * На старых версиях пустой ответ.
+     */
+    @Command
+    fun systemAccent(invoke: Invoke) {
+        val response = JSObject()
+        if (Build.VERSION.SDK_INT >= 31) {
+            val color = activity.getColor(android.R.color.system_accent1_500)
+            response.put("color", String.format("#%06x", color and 0xffffff))
+        }
+        invoke.resolve(response)
+    }
+
+    /** Голосовой поиск: системное окно распознавания речи. Доступ к микрофону просит оно само. */
+    @Command
+    fun voiceSearch(invoke: Invoke) {
+        val args = invoke.parseArgs(VoiceArgs::class.java)
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+            .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+            .putExtra(RecognizerIntent.EXTRA_PROMPT, args.prompt ?: "Что найти?")
+        try {
+            startActivityForResult(invoke, intent, "voiceRecognized")
+        } catch (e: Exception) {
+            invoke.reject("На телефоне нет распознавания речи. Обычно его даёт приложение Google")
+        }
+    }
+
+    @ActivityCallback
+    fun voiceRecognized(invoke: Invoke, result: ActivityResult) {
+        val response = JSObject()
+        val texts = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+        if (result.resultCode == Activity.RESULT_OK && !texts.isNullOrEmpty()) {
+            response.put("text", texts[0])
+        }
+        invoke.resolve(response)
     }
 
     // ---------- Обновления и «Поделиться» ----------

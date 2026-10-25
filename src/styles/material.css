@@ -1228,6 +1228,56 @@ kbd {
 .search-hint svg {
   color: var(--md-primary);
 }
+
+/* Подсказки к запросу и недавние запросы */
+.search-suggest {
+  margin: -6px 0 14px;
+}
+.search-suggest .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+.search-suggest .chip span,
+.recent-search__main span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recent-searches {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.recent-search {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--md-shape-m);
+}
+.recent-search:hover {
+  background: var(--layer-hover);
+}
+.recent-search__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: var(--md-body-l);
+  text-align: left;
+  cursor: pointer;
+}
+.recent-search__main svg {
+  flex: none;
+  color: var(--text-2);
+}
 .soft-warning {
   color: var(--md-on-tertiary-container);
   background: rgb(var(--md-tertiary-container-rgb) / calc(0.4 + var(--surface-alpha) * 0.5));

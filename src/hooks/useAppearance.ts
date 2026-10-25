@@ -10,6 +10,7 @@ import { usePlayer } from '../store/player';
 import { useSettings } from '../store/settings';
 import { useUi } from '../store/ui';
 import { useEffectiveTheme } from './useSystemTheme';
+import { useWallpaperColor } from './useWallpaperColor';
 
 /**
  * Оформление: фон окна (стекло/акрил/Mica), тема, схема Material You из обложки,
@@ -20,6 +21,7 @@ export function useAppearance() {
   const theme = useSettings((s) => s.theme);
   const reduce = useSettings((s) => s.reduceTransparency);
   const dynamic = useSettings((s) => s.dynamicAccent);
+  const wallpaper = useWallpaperColor(useSettings((s) => s.wallpaperColors));
   const seedColor = useSettings((s) => s.seedColor);
   const materialStyle = useSettings((s) => s.materialStyle);
   const contrastLevel = useSettings((s) => s.contrastLevel);
@@ -81,12 +83,13 @@ export function useAppearance() {
       ui.setAccent(scheme.primary);
       ui.setSeed(seed);
     };
-    if (!dynamic || !art) apply(seedColor);
+    if (wallpaper) apply(wallpaper);
+    else if (!dynamic || !art) apply(seedColor);
     else void extractAccent(art, effective).then(apply, () => apply(seedColor));
     return () => {
       alive = false;
     };
-  }, [art, contrastLevel, dynamic, effective, materialStyle, seedColor]);
+  }, [art, contrastLevel, dynamic, effective, materialStyle, seedColor, wallpaper]);
 
   useEffect(() => {
     engine.setEq(eqEnabled, eqGains);

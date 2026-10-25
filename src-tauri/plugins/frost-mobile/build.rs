@@ -16,6 +16,10 @@ const COMMANDS: &[&str] = &[
     "save_document",
     "register_listener",
     "remove_listener",
+    "take_link",
+    "haptic",
+    "voice_search",
+    "system_accent",
 ];
 
 fn main() {

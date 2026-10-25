@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { appWindow } from '../lib/window';
+import { rememberSearch } from '../store/searchHistory';
 import { useUi } from '../store/ui';
 import { Logo } from './Logo';
 
@@ -53,6 +54,10 @@ function SearchBox() {
         autoComplete="off"
         onFocus={onFocus}
         onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') rememberSearch(query);
+        }}
+        onBlur={() => rememberSearch(query)}
       />
       {query ? (
         <button className="search-box__clear" onClick={() => setQuery('')} title="Очистить">

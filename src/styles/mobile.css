@@ -183,6 +183,8 @@
 
 .app--mobile .main__scroll {
   height: 100%;
+  /* Поля Windows-версии (32px 40px) здесь не нужны: отступы страницы задаёт только .page */
+  padding: 0;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
@@ -721,7 +723,8 @@
 
 .app--mobile .page {
   max-width: none;
-  padding: 4px var(--gutter) 24px;
+  margin: 0;
+  padding: 8px var(--gutter) 24px;
 }
 
 .app--mobile .page-head {
@@ -756,13 +759,83 @@
   line-height: 28px;
 }
 
-.app--mobile .tabs,
-.app--mobile .chip-row,
-.app--mobile .segmented {
-  max-width: 100%;
+/* Вкладки и чипы на странице листаются вбок от края до края экрана, а не обрываются у поля */
+.app--mobile .page .tabs,
+.app--mobile .page .chip-row {
+  max-width: none;
+  margin-inline: calc(-1 * var(--gutter));
+  padding-inline: var(--gutter);
   overflow-x: auto;
   scrollbar-width: none;
+  scroll-padding-inline: var(--gutter);
   flex-wrap: nowrap;
+}
+
+.app--mobile .page .tabs > *,
+.app--mobile .page .chip-row > * {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* Внутри карточек и групп настроек (пресеты эквалайзера) чипы переносятся на новую строку */
+.app--mobile .page .settings-group .chip-row,
+.app--mobile .page .eq .chip-row,
+.app--mobile .page .tool-card .chip-row {
+  margin-inline: 0;
+  padding-inline: 0;
+  overflow: visible;
+  flex-wrap: wrap;
+}
+
+/*
+ * Сегментированные кнопки на телефоне становятся чипами выбора (M3 choice chips):
+ * «YouTube Music», «Как в системе» и «Стандартный» в один ряд шириной 288px не влезают,
+ * а чипы переносятся на следующую строку и ничего не обрезают.
+ */
+.app--mobile .segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.app--mobile .segmented button,
+.app--mobile .segmented__item {
+  flex: none;
+  max-width: 100%;
+  height: 40px;
+  padding: 0 16px;
+  gap: 6px;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-s, 8px);
+  color: var(--md-on-surface-variant);
+}
+
+.app--mobile .segmented button:first-child,
+.app--mobile .segmented__item:first-child {
+  border-left: 1px solid var(--md-outline-variant);
+}
+
+.app--mobile .segmented button.is-active,
+.app--mobile .segmented__item--on {
+  padding-left: 10px;
+  border-color: transparent;
+  color: var(--md-on-secondary-container);
+}
+
+.app--mobile .segmented__check {
+  flex: none;
+  margin-left: 0;
+}
+
+.app--mobile .segmented__label {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .app--mobile .toolbar {
@@ -783,12 +856,82 @@
 
 .app--mobile .quick-tile {
   height: 56px;
+  padding: 6px;
+  gap: 10px;
+}
+
+.app--mobile .quick-tile__art,
+.app--mobile .quick-tile .artwork {
+  width: 44px !important;
+  height: 44px !important;
+  flex: none;
+}
+
+/* Кнопка «играть» появляется только при наведении мыши: на телефоне место под неё не держим */
+.app--mobile .quick-tile__text {
+  padding-right: 6px;
+}
+
+.app--mobile .quick-tile.is-active .quick-tile__text {
+  padding-right: 34px;
+}
+
+.app--mobile .quick-tile__play {
+  display: none;
+}
+
+.app--mobile .quick-tile__eq {
+  right: 6px;
 }
 
 .app--mobile .genre-grid,
 .app--mobile .genre-grid--large {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+/*
+ * Плитка жанра в половину ширины телефона: значок сверху, название под ним на всю ширину.
+ * Значок слева оставлял названию ~70px, и «Электроника» или «Альтернатива» обрезались.
+ */
+.app--mobile .genre-tile,
+.app--mobile .genre-grid--large .genre-tile {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  height: auto;
+  min-height: 76px;
+  padding: 10px 12px;
+  gap: 6px;
+}
+
+.app--mobile .genre-tile__icon {
+  width: 30px;
+  height: 30px;
+}
+
+.app--mobile .genre-tile__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.app--mobile .genre-tile__text {
+  align-self: stretch;
+}
+
+.app--mobile .genre-tile__label {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+/* Источник поиска: чипы в одну строку, листаются вбок, как на главной */
+.app--mobile .page--search .segmented {
+  flex-wrap: nowrap;
+  max-width: none;
+  margin-inline: calc(-1 * var(--gutter));
+  padding-inline: var(--gutter);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .app--mobile .search-top {
@@ -865,6 +1008,25 @@
   padding: 20px 16px;
 }
 
+/* «На телефоне»: вкладки над полем фильтра, поле на всю ширину (было 300px) */
+.app--mobile .local-toolbar {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.app--mobile .local-filter .input {
+  width: 100%;
+}
+
+.app--mobile .local-folder {
+  max-width: 100%;
+}
+
+/* «Слушать» и «Перемешать» помещаются в одну строку */
+.app--mobile .page-hero__actions .btn {
+  padding-inline: 16px;
+}
+
 .app--mobile .page-hero__actions {
   flex-wrap: wrap;
 }
@@ -902,26 +1064,148 @@
 /* ---------- Настройки ---------- */
 
 .app--mobile .settings-group {
+  min-width: 0;
   padding: 16px 12px 12px;
   border-radius: var(--md-shape-xl, 24px);
 }
 
+.app--mobile .settings-group__head {
+  align-items: flex-start;
+}
+
+/* Подпись слева, переключатель справа. Широкий элемент (список, кнопка) уходит под подпись */
 .app--mobile .setting-row {
   flex-wrap: wrap;
   gap: 8px 16px;
   padding: 12px 8px;
 }
 
+.app--mobile .setting-row:not(.setting-row--stacked) > .setting-row__text {
+  flex: 1 1 160px;
+}
+
+.app--mobile .setting-row > .switch {
+  flex: none;
+}
+
 .app--mobile .setting-row > :last-child {
   max-width: 100%;
 }
 
+.app--mobile .setting-row > .select {
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Карточки источников и благодарностей: одна колонка вместо двух по 280px */
+.app--mobile .sources,
+.app--mobile .credits,
+.app--mobile .source-card__fields {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/*
+ * Карточка источника: значок и переключатель в первой строке (переключатель справа, как в
+ * остальных строках), под ними описание, ниже кнопка «Проверить». В одну строку с
+ * переключателем она не помещается на 360px.
+ */
+.app--mobile .source-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  min-width: 0;
+  padding: 12px 12px 8px 16px;
+}
+
+.app--mobile .source-card__head {
+  display: contents;
+}
+
+.app--mobile .source-card__head .spacer {
+  display: none;
+}
+
+.app--mobile .source-card__head .provider-badge {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+}
+
+.app--mobile .source-card__head .switch {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.app--mobile .source-card__hint {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.app--mobile .source-card__head .btn {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  justify-self: start;
+  margin: 4px 0 0 -8px;
+}
+
+.app--mobile .source-card__result {
+  grid-column: 1 / -1;
+  grid-row: 4;
+  margin-bottom: 6px;
+}
+
+.app--mobile .scheme-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(132px, 100%), 1fr));
+}
+
 .app--mobile .tool-card {
+  min-width: 0;
   padding: 14px;
 }
 
+.app--mobile .tool-card__head {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+/* Эквалайзер: 10 полос в ширину телефона */
+.app--mobile .eq {
+  padding: 12px 8px;
+}
+
+.app--mobile .eq__bands {
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.app--mobile .eq__value,
+.app--mobile .eq__freq {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* Полосу двигает палец, а не прокрутка страницы */
+[data-platform='android'] .eq__slider {
+  touch-action: none;
+}
+
+/* Поле ввода с кнопкой (токены, ключи): на всю ширину строки под подписью */
 .app--mobile .inline-form {
   flex-wrap: wrap;
+}
+
+.app--mobile .setting-row > .inline-form {
+  display: flex;
+  flex: 1 1 100%;
+  justify-content: flex-start;
+}
+
+.app--mobile .inline-form .input {
+  flex: 1 1 140px;
+  width: auto;
+  min-width: 0;
 }
 
 .app--mobile .select,
@@ -961,10 +1245,13 @@
 }
 
 .m-shortcut span {
+  display: -webkit-box;
   min-width: 0;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 18px;
+  overflow-wrap: anywhere;
 }
 
 .m-shortcut:active {
