@@ -19,6 +19,7 @@ const COMMANDS: &[&str] = &[
     "take_link",
     "haptic",
     "voice_search",
+    "system_accent",
 ];
 
 fn main() {

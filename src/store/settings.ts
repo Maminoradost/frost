@@ -23,6 +23,8 @@ export interface SettingsValues {
   theme: ThemeMode;
   /** Material You: цвета интерфейса из обложки текущего трека. */
   dynamicAccent: boolean;
+  /** Android 12+: цвета из обоев, как у системы. Важнее обложки и выбранного цвета. */
+  wallpaperColors: boolean;
   /** Сид схемы, когда динамический цвет выключен. */
   seedColor: string;
   /** Вариант динамической палитры Material You. */
@@ -111,6 +113,7 @@ export const useSettings = create<SettingsState>()(
       backdrop: 'glass',
       theme: 'dark',
       dynamicAccent: true,
+      wallpaperColors: false,
       seedColor: BASELINE_SEED,
       materialStyle: 'tonalSpot',
       contrastLevel: 'standard',
@@ -210,6 +213,7 @@ export const useSettings = create<SettingsState>()(
         backdrop: s.backdrop,
         theme: s.theme,
         dynamicAccent: s.dynamicAccent,
+        wallpaperColors: s.wallpaperColors,
         seedColor: s.seedColor,
         materialStyle: s.materialStyle,
         contrastLevel: s.contrastLevel,

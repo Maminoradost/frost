@@ -2,6 +2,7 @@ import { Check, MicVocal, Palette } from 'lucide-react';
 import { useMemo, useState, type CSSProperties } from 'react';
 import { Switch } from '../../components/Switch';
 import { useEffectiveTheme } from '../../hooks/useSystemTheme';
+import { useWallpaperColor } from '../../hooks/useWallpaperColor';
 import { clearAllOverrides, countOverrides } from '../../lib/lyricsStore';
 import { SCHEME_STYLES, SEED_PRESETS, schemeFromSeed, type ContrastLevel, type SchemeStyle } from '../../lib/material';
 import { IS_ANDROID, SYSTEM_THEME_LABEL } from '../../lib/platform';
@@ -82,7 +83,10 @@ export function AppearanceGroup() {
   const current = BACKDROPS.find((b) => b.id === s.backdrop) ?? BACKDROPS[0];
   const opacity = Math.round(s.surfaceOpacity * 100);
   const seed = s.seedColor.toLowerCase();
-  const previewSeed = s.dynamicAccent ? liveSeed || s.seedColor : s.seedColor;
+  // Android 12+: есть ли цвета из обоев (на старых версиях переключатель не показывается)
+  const wallpaper = useWallpaperColor(IS_ANDROID);
+  const fromWallpaper = s.wallpaperColors && !!wallpaper;
+  const previewSeed = fromWallpaper && wallpaper ? wallpaper : s.dynamicAccent ? liveSeed || s.seedColor : s.seedColor;
   const style = SCHEME_STYLES.find((x) => x.id === s.materialStyle) ?? SCHEME_STYLES[0];
 
   return (
@@ -90,11 +94,19 @@ export function AppearanceGroup() {
       <Row label="Тема" description={s.theme === 'system' ? `Сейчас в Windows: ${effective === 'dark' ? 'тёмная' : 'светлая'}` : undefined}>
         <Segmented label="Тема" value={s.theme} options={THEMES} onChange={(v) => s.update({ theme: v })} />
       </Row>
+      {wallpaper && (
+        <Switch
+          checked={s.wallpaperColors}
+          onChange={(v) => s.update({ wallpaperColors: v })}
+          label="Цвета из обоев"
+          description="Как у системы и других приложений Android 12+. Пока включено, цвет обложки и выбранный цвет не используются"
+        />
+      )}
       <Switch
         checked={s.dynamicAccent}
         onChange={(v) => s.update({ dynamicAccent: v })}
         label="Динамический цвет"
-        description="Палитра интерфейса строится из обложки текущего трека (Material You)"
+        description={fromWallpaper ? 'Сейчас цвета берутся из обоев' : 'Палитра интерфейса строится из обложки текущего трека (Material You)'}
       />
       <Row label={s.dynamicAccent ? 'Цвет, когда ничего не играет' : 'Основной цвет'} stacked>
         <div className="seed-row">

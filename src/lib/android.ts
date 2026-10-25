@@ -151,3 +151,10 @@ export async function voiceSearch(prompt?: string): Promise<string | null> {
   const text = result?.text?.trim();
   return text ? text : null;
 }
+
+/** Android 12+: цвет из обоев (системная палитра Material You), `#rrggbb`. null на старых версиях. */
+export async function systemAccent(): Promise<string | null> {
+  if (!IS_ANDROID) return null;
+  const result = await call<{ color?: string }>('system_accent').catch(() => null);
+  return result?.color && /^#[0-9a-f]{6}$/i.test(result.color) ? result.color : null;
+}

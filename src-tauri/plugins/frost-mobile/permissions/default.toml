@@ -20,4 +20,5 @@ permissions = [
   "allow-take-link",
   "allow-haptic",
   "allow-voice-search",
+  "allow-system-accent",
 ]

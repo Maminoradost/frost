@@ -356,6 +356,20 @@ class FrostMobilePlugin(private val activity: Activity) : Plugin(activity) {
         invoke.resolve()
     }
 
+    /**
+     * Android 12+: основной цвет системной палитры, которую Android строит из обоев (Material You).
+     * На старых версиях пустой ответ.
+     */
+    @Command
+    fun systemAccent(invoke: Invoke) {
+        val response = JSObject()
+        if (Build.VERSION.SDK_INT >= 31) {
+            val color = activity.getColor(android.R.color.system_accent1_500)
+            response.put("color", String.format("#%06x", color and 0xffffff))
+        }
+        invoke.resolve(response)
+    }
+
     /** Голосовой поиск: системное окно распознавания речи. Доступ к микрофону просит оно само. */
     @Command
     fun voiceSearch(invoke: Invoke) {
