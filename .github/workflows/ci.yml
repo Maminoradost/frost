@@ -35,6 +35,11 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
+      # Пары крейт ↔ npm-пакет Tauri: сборщик Tauri откажется собирать, если major.minor разошлись
+      - name: Версии Tauri (Rust ↔ npm)
+        working-directory: ${{ steps.app.outputs.dir }}
+        run: node scripts/check-tauri-versions.mjs
+
       - name: Зависимости
         working-directory: ${{ steps.app.outputs.dir }}
         run: npm ci

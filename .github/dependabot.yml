@@ -1,15 +1,41 @@
+# Обновления зависимостей.
+#
+# Плагины Tauri живут парами: крейт tauri-plugin-<имя> (src-tauri/Cargo.lock) и npm-пакет
+# @tauri-apps/plugin-<имя> (package-lock.json), так же tauri и @tauri-apps/api. Сборщик Tauri
+# не соберёт приложение, если major.minor в паре разъехались, а раньше Dependabot присылал
+# половинки пары разными пул-реквестами. Поэтому npm и cargo обновляются одним общим
+# пул-реквестом раз в неделю: обе половины пары приходят вместе. Проверка пар в CI:
+# scripts/check-tauri-versions.mjs.
+#
+# Мажорные версии (например, vite 6 → 7) не предлагаются: в общем пул-реквесте одна такая
+# поломка задержала бы все остальные обновления. Их обновляют вручную.
 version: 2
+
+multi-ecosystem-groups:
+  dependencies:
+    schedule:
+      interval: weekly
+    labels: [dependencies]
+
 updates:
   - package-ecosystem: npm
     directory: "/"
-    schedule:
-      interval: weekly
+    patterns: ["*"]
+    multi-ecosystem-group: dependencies
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: cargo
     directory: "/src-tauri"
-    schedule:
-      interval: weekly
+    patterns: ["*"]
+    multi-ecosystem-group: dependencies
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
