@@ -17,4 +17,7 @@ permissions = [
   "allow-save-document",
   "allow-register-listener",
   "allow-remove-listener",
+  "allow-take-link",
+  "allow-haptic",
+  "allow-voice-search",
 ]

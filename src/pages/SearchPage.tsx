@@ -1,4 +1,4 @@
-import { Link2, Music2, SearchX, Sparkles } from 'lucide-react';
+import { History, Link2, Music2, Search, SearchX, Sparkles, X } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { GenreTile, MediaCard } from '../components/MediaCard';
 import { EmptyState, ErrorState, LoadMore, Section, SkeletonCards, SkeletonRows } from '../components/States';
@@ -7,11 +7,14 @@ import { useAsync, usePaged } from '../hooks/useAsync';
 import { useDebounce } from '../hooks/useDebounce';
 import { followersLabel, playRemotePlaylist } from '../lib/actions';
 import { api } from '../lib/api';
+import { isLink } from '../lib/shareLinks';
 import { providerMeta } from '../lib/providers';
+import { suggestFor } from '../lib/searchHistory';
 import { SC_GENRES } from '../lib/soundcloud';
 import type { Artist, Playlist, SearchResults, SearchSource, SourceProvider, Track } from '../lib/types';
 import { DEFAULT_CONFIG } from '../lib/types';
 import { usePlayer } from '../store/player';
+import { rememberSearch, useSearchHistory } from '../store/searchHistory';
 import { useSettings } from '../store/settings';
 import { navigate, useUi } from '../store/ui';
 
@@ -30,7 +33,6 @@ const SOURCES: [SearchSource, string][] = [
   ['soundcloud', 'SoundCloud'],
 ];
 
-const isLink = (q: string) => /^https?:\/\//i.test(q.trim());
 
 /** Чередует выдачу двух источников: лучшие результаты обоих вверху. */
 function interleave<T>(a: T[], b: T[]): T[] {
@@ -70,6 +72,7 @@ export function SearchPage() {
           ))}
         </div>
       </div>
+      <SearchSuggestions query={q} soundcloud={config.soundcloud} />
       <div className="tabs" role="tablist">
         {TABS.map(([t, label]) => (
           <button key={t} className={`tab ${tab === t ? 'tab--on' : ''}`} onClick={() => setTab(t)}>
@@ -274,11 +277,69 @@ function LinkResult({ link }: { link: string }) {
   );
 }
 
+/** Выбрать запрос из подсказок или истории: подставить в поиск и поднять наверх истории. */
+function pickQuery(text: string) {
+  rememberSearch(text);
+  useUi.getState().setSearchQuery(text);
+}
+
+/** Подсказки к запросу: свои прошлые запросы и автодополнение SoundCloud. */
+function SearchSuggestions({ query, soundcloud }: { query: string; soundcloud: boolean }) {
+  const history = useSearchHistory((s) => s.queries);
+  const key = soundcloud && query.length >= 2 ? `sc-suggest:${query.toLocaleLowerCase()}` : null;
+  const { data: remote } = useAsync(key, () => api.suggestions(query));
+  const items = suggestFor(query, history, remote ?? []);
+  if (!items.length) return null;
+  const mine = new Set(history.map((h) => h.toLocaleLowerCase()));
+  return (
+    <div className="chip-row search-suggest" aria-label="Подсказки">
+      {items.map((text) => (
+        <button key={text} className="chip" onClick={() => pickQuery(text)}>
+          {mine.has(text.toLocaleLowerCase()) ? <History size={14} /> : <Search size={14} />}
+          <span>{text}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Последние запросы на пустой странице поиска. */
+function RecentSearches() {
+  const queries = useSearchHistory((s) => s.queries);
+  if (!queries.length) return null;
+  const { remove, clear } = useSearchHistory.getState();
+  return (
+    <Section
+      title="Недавние запросы"
+      action={
+        <button className="btn btn--text" onClick={clear}>
+          Очистить
+        </button>
+      }
+    >
+      <ul className="recent-searches">
+        {queries.map((text) => (
+          <li key={text} className="recent-search">
+            <button className="recent-search__main" onClick={() => pickQuery(text)}>
+              <History size={16} />
+              <span>{text}</span>
+            </button>
+            <button className="icon-btn icon-btn--sm" onClick={() => remove(text)} aria-label={`Убрать «${text}» из истории`}>
+              <X size={16} />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
 function SearchHome() {
   const config = useSettings((s) => s.config) ?? DEFAULT_CONFIG;
   const { data } = useAsync(config.youtube ? 'yt-genres' : null, () => api.genres());
   return (
     <div className="page page--search">
+      <RecentSearches />
       <div className="search-hint">
         <Sparkles size={18} />
         <span>

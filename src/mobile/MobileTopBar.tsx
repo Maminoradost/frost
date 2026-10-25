@@ -1,7 +1,10 @@
-import { ArrowLeft, Search, X } from 'lucide-react';
+import { ArrowLeft, Mic, Search, X } from 'lucide-react';
 import { Logo } from '../components/Logo';
-import { DEVICE_FILES_LABEL } from '../lib/platform';
-import { useUi, type Route } from '../store/ui';
+import { voiceSearch } from '../lib/android';
+import { errorText } from '../lib/api';
+import { DEVICE_FILES_LABEL, IS_ANDROID } from '../lib/platform';
+import { rememberSearch } from '../store/searchHistory';
+import { toast, useUi, type Route } from '../store/ui';
 import { isTabRoot, openTab } from './store';
 
 function titleOf(route: Route): string {
@@ -52,6 +55,18 @@ export function MobileTopBar() {
 }
 
 /** Поле поиска (то же состояние, что у поля в заголовке окна Windows). */
+/** Голосовой поиск: системное окно распознавания речи, текст сразу в поле и в историю. */
+async function listen(setQuery: (q: string) => void) {
+  try {
+    const text = await voiceSearch('Что найти?');
+    if (!text) return;
+    setQuery(text);
+    rememberSearch(text);
+  } catch (e) {
+    toast(errorText(e), 'error');
+  }
+}
+
 function MobileSearchField() {
   const query = useUi((s) => s.searchQuery);
   const setQuery = useUi((s) => s.setSearchQuery);
@@ -71,7 +86,13 @@ function MobileSearchField() {
           // «Найти» на клавиатуре прячет её, чтобы были видны результаты
           if (e.key === 'Enter') e.currentTarget.blur();
         }}
+        onBlur={() => rememberSearch(query)}
       />
+      {!query && IS_ANDROID && (
+        <button className="icon-btn icon-btn--sm" onClick={() => void listen(setQuery)} aria-label="Голосовой поиск">
+          <Mic size={18} />
+        </button>
+      )}
       {query && (
         <button
           className="icon-btn icon-btn--sm"

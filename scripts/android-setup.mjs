@@ -177,5 +177,42 @@ if (botguard) {
   done.push('rustypipe-botguard: не задан FROST_BOTGUARD_BIN, сборка без него');
 }
 
+// 7. Ссылки YouTube Music и SoundCloud, «Поделиться» -----------------------------------------------
+// Frost появляется в меню «Поделиться» для текста со ссылкой и в списке приложений для ссылок
+// music.youtube.com, youtu.be и SoundCloud. Сами ссылки разбирает фронтенд (src/lib/shareLinks.ts,
+// src/mobile/useIncomingLinks.ts). На Android 12+ чужие домены по умолчанию открывает браузер:
+// включите их в настройках Frost («Открывать по умолчанию» → «Добавить ссылку»).
+patch(join(appDir, 'src', 'main', 'AndroidManifest.xml'), 'Ссылки и «Поделиться»', (text) => {
+  const anchor = /(<activity\b[^>]*android:name="[^"]*MainActivity"[\s\S]*?)(\n(\s*)<\/activity>)/;
+  if (!anchor.test(text)) return null;
+  return text.replace(anchor, (_, body, close, indent) => {
+    const i = `${indent}    `;
+    const filter = (lines) =>
+      `\n${i}<intent-filter>\n${lines.map((l) => `${i}    ${l}`).join('\n')}\n${i}</intent-filter>`;
+    const view = ['<action android:name="android.intent.action.VIEW" />', '<category android:name="android.intent.category.DEFAULT" />', '<category android:name="android.intent.category.BROWSABLE" />', '<data android:scheme="https" />'];
+    return `${body}
+${i}<!-- ${MARK}: ссылки YouTube Music и SoundCloud открываются во Frost -->${filter([
+      ...view,
+      '<data android:host="music.youtube.com" />',
+      '<data android:host="youtu.be" />',
+      '<data android:host="soundcloud.com" />',
+      '<data android:host="m.soundcloud.com" />',
+      '<data android:host="on.soundcloud.com" />',
+    ])}
+${i}<!-- ${MARK}: ролики YouTube только со страниц /watch и /playlist -->${filter([
+      ...view,
+      '<data android:host="www.youtube.com" />',
+      '<data android:host="m.youtube.com" />',
+      '<data android:pathPrefix="/watch" />',
+      '<data android:pathPrefix="/playlist" />',
+    ])}
+${i}<!-- ${MARK}: «Поделиться» → Frost (текст со ссылкой) -->${filter([
+      '<action android:name="android.intent.action.SEND" />',
+      '<category android:name="android.intent.category.DEFAULT" />',
+      '<data android:mimeType="text/plain" />',
+    ])}${close}`;
+  });
+});
+
 console.log(`\nAndroid-проект Frost настроен (${rel(androidDir)}):`);
 for (const line of done) console.log(`  • ${line}`);

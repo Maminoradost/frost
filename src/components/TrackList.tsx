@@ -1,6 +1,7 @@
 import { Clock, Ellipsis, Heart, Pause, Play } from 'lucide-react';
 import { memo, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { useDragSort, type DragItemProps } from '../hooks/useDragSort';
+import { useLongPress } from '../hooks/useLongPress';
 import { formatCount, formatTime } from '../lib/format';
 import { IS_ANDROID } from '../lib/platform';
 import type { Track } from '../lib/types';
@@ -132,6 +133,8 @@ const TrackRow = memo(function TrackRow({
     e.stopPropagation();
     useUi.getState().openMenu(e.clientX, e.clientY, trackMenuItems(track, { localPlaylistId, index }));
   };
+  // Телефон: долгое нажатие на строку открывает то же меню, с виброоткликом
+  const longPress = useLongPress((x, y) => useUi.getState().openMenu(x, y, trackMenuItems(track, { localPlaylistId, index })), openMenu);
   const artistId = track.artistId;
 
   return (
@@ -141,7 +144,7 @@ const TrackRow = memo(function TrackRow({
       onDoubleClick={() => onPlay(index)}
       // На телефоне трек включается одним касанием (кроме кнопок внутри строки)
       onClick={IS_ANDROID ? (e) => !(e.target as HTMLElement).closest('button, a, input') && handlePlay() : undefined}
-      onContextMenu={openMenu}
+      {...(IS_ANDROID ? longPress : { onContextMenu: openMenu })}
       draggable={drag?.draggable}
       onDragStart={drag?.onDragStart}
       onDragOver={drag?.onDragOver}

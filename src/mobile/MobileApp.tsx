@@ -14,6 +14,7 @@ import { MiniPlayer } from './MiniPlayer';
 import { MobileNowPlaying } from './MobileNowPlaying';
 import { MobileTopBar } from './MobileTopBar';
 import { useBackButton } from './useBackButton';
+import { useIncomingLinks } from './useIncomingLinks';
 
 /** Оболочка для телефона: верхняя панель, страница, мини-плеер и нижняя навигация. */
 export function MobileApp() {
@@ -22,6 +23,7 @@ export function MobileApp() {
   useCore();
   useBackButton();
   useSystemInsets();
+  useIncomingLinks();
 
   return (
     <div className={`app app--mobile ${hasTrack ? 'has-track' : ''}`}>

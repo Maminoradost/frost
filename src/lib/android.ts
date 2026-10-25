@@ -117,3 +117,37 @@ export async function nativeInfo(): Promise<NativeInfo | null> {
   if (!IS_ANDROID) return null;
   return call<NativeInfo>('native_info').catch(() => null);
 }
+
+/** Ссылка, с которой запустили Frost («Поделиться» или переход по ссылке). Отдаётся один раз. */
+export async function takeLaunchLink(): Promise<string | null> {
+  if (!IS_ANDROID) return null;
+  const result = await call<{ url?: string }>('take_link').catch(() => null);
+  return result?.url ?? null;
+}
+
+export type HapticKind = 'long' | 'tick' | 'confirm';
+let lastHaptic = 0;
+
+/**
+ * Короткий отклик вибромотора (долгое нажатие, смена трека жестом). Учитывает системную
+ * настройку «Виброотклик». На компьютере ничего не делает.
+ */
+export function haptic(kind: HapticKind = 'long'): void {
+  if (!IS_ANDROID) return;
+  const now = Date.now();
+  // Серия жестов не должна превращаться в дребезг
+  if (now - lastHaptic < 80) return;
+  lastHaptic = now;
+  void call('haptic', { kind }).catch(() => {});
+}
+
+/**
+ * Голосовой поиск через системное окно распознавания речи. null: пользователь закрыл окно
+ * или ничего не сказал. Ошибка: на телефоне нет распознавания речи.
+ */
+export async function voiceSearch(prompt?: string): Promise<string | null> {
+  if (!IS_ANDROID) return null;
+  const result = await call<{ text?: string }>('voice_search', { prompt: prompt ?? null });
+  const text = result?.text?.trim();
+  return text ? text : null;
+}
