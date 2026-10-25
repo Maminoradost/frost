@@ -65,7 +65,7 @@ export function SearchPage() {
         <div className="segmented" role="tablist" aria-label="Источник">
           {SOURCES.filter(([s]) => s === 'all' || enabled.includes(s as SourceProvider)).map(([s, label]) => (
             <button key={s} className={`segmented__item ${source === s ? 'segmented__item--on' : ''}`} onClick={() => setSource(s)}>
-              {label}
+              <span className="segmented__label">{label}</span>
             </button>
           ))}
         </div>

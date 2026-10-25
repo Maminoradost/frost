@@ -54,7 +54,11 @@ const SEARCH_SOURCES: [SearchSource, string][] = [
 ];
 
 const NET_MODES: { id: NetMode; label: string; hint: string }[] = [
-  { id: 'system', label: 'Как в системе', hint: 'Системный прокси Windows: подхватывает большинство VPN-клиентов' },
+  {
+    id: 'system',
+    label: 'Как в системе',
+    hint: IS_ANDROID ? 'Как настроено в Android: VPN-приложения работают без дополнительной настройки' : 'Системный прокси Windows: подхватывает большинство VPN-клиентов',
+  },
   { id: 'custom', label: 'Свой прокси', hint: 'HTTP, HTTPS или SOCKS5, например socks5://127.0.0.1:1080' },
   { id: 'direct', label: 'Напрямую', hint: 'Игнорировать системный прокси' },
 ];
@@ -580,7 +584,7 @@ function AboutGroup() {
     <Group icon={<Info size={20} />} title="О программе">
       <div className="about">
         <p>
-          <strong>Frost {info?.version ?? APP_VERSION}</strong>: музыкальный плеер для Windows в стиле Material You. SoundCloud и YouTube
+          <strong>Frost {info?.version ?? APP_VERSION}</strong>: музыкальный плеер для {IS_ANDROID ? 'Android' : 'Windows'} в стиле Material You. SoundCloud и YouTube
           Music без ключей и аккаунтов.
         </p>
         <p className="muted">Свободная программа под лицензией GNU GPL v3 или новее. Все права на музыку принадлежат её авторам.</p>

@@ -65,7 +65,7 @@ export function Segmented<T extends string>({
             onClick={() => onChange(id)}
           >
             {on && <Check size={16} className="segmented__check" />}
-            {text}
+            <span className="segmented__label">{text}</span>
           </button>
         );
       })}
